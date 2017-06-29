@@ -1,0 +1,54 @@
+.DEFAULT_GOAL := LIB
+
+C_ROOT = /opt/gcc-5.2.0
+MPI_ROOT = /opt/openmpi/1.8.7/gnu520
+MPICC = $(MPI_ROOT)/bin/mpicxx
+CC = $(C_ROOT)/bin/g++
+CFLAGS = -std=c++14 -O3 -Wextra 
+OBJDIR = .
+LIBDIR = .
+
+CPPFILES = Lattice.cpp \
+	InterfaceCellIdentifierImp.cpp \
+	InterfaceCellIdentifier2D.cpp \
+	InterfaceCellIdentifier3D.cpp \
+	KernelFileReader.cpp \
+	KernelRelationComponent.cpp \
+	KernelRelation.cpp \
+	AbsorbingBoundaryCondition.cpp \
+	PositionPredictor.cpp 
+
+MPI_CPPFILES = PositionPredictor_MPI.cpp
+OpenMP_CPPFILES = PositionPredictor_OpenMP.cpp
+
+OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(CPPFILES))
+MPI_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(MPI_CPPFILES))
+OpenMP_OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(OpenMP_CPPFILES))
+
+
+$(OBJDIR)/%.o: %.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJDIR)/PositionPredictor_MPI.o: PositionPredictor_MPI.cpp
+	$(MPICC) $(CFLAGS) -c -I$(MPI_ROOT) $< -o $@
+
+$(OBJDIR)/PositionPredictor_OpenMP.o: PositionPredictor_OpenMP.cpp
+	$(CC) $(CFLAGS) -c -fopenmp $< -o $@
+
+clean:
+	rm -f $(LIBDIR)/libAbsorbing.a
+	rm -rf $(OBJDIR)/*.o
+	rm -f $(OBJDIR)/console
+
+LIB: $(OBJS)
+	ar rvs $(LIBDIR)/libAbsorbing.a $(OBJS)
+
+MPI_LIB: $(OBJS) $(MPI_OBJS)
+	ar rvs $(LIBDIR)/libAbsorbing.a $(OBJS) $(MPI_OBJS)
+
+OpenMP_LIB: $(OBJS) $(OpenMP_OBJS)
+	ar rvs $(LIBDIR)/libAbsorbing.a $(OBJS) $(OpenMP_OBJS)
+
+test: $(OBJDIR)/main.o $(OBJS)
+	$(CC) $(OBJDIR)/main.o $(OBJS) -Wl,--rpath=$(C_ROOT)/lib64,--rpath=$(MPI_ROOT)/lib -o $(OBJDIR)/console
+
