@@ -157,7 +157,7 @@ void KernelMatrix::calculateEigen(){
     }
 
     cout<<"DV: "<<vdof<<"x"<<DV.size()/vdof<<endl;
-    cout<<"DVR:"<<vdof<<"x"<<rdof<<endl;    
+    cout<<"DVR:"<<vdof<<"x"<<rdof<<endl;
 }
     loadMatrix("evalue",this->d,vdof);
     loadMatrix("evector",this->X,vdof);
@@ -175,8 +175,8 @@ if (d(0,0)<1e-10){
 }
 }
 }
-cout<<"eigen value after loading"<<endl;
-cout<<d<<endl;
+// cout<<"eigen value after loading"<<endl;
+// cout<<d<<endl;
 }
 
 MatrixXd KernelMatrix::calculateKernelMatrix(double t){ 
@@ -221,19 +221,19 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
    // 2. Initialize matrix
    // 3. Put data in vector<double> into matrix
    
-   std::ifstream input(filename.c_str());
+   ifstream input(filename.c_str());
    if (input.fail())
    {
-     std::cerr << "ERROR. Cannot find file '" << filename << "'." << std::endl;
+     cout << "No '" << filename << "'." << endl;
      return false;
    }
-   std::string line;
+   string line;
    double d;
    
-   std::vector<double> v;
+   vector<double> v;
    while (getline(input, line))
    {
-     std::stringstream input_line(line);
+     stringstream input_line(line);
      while (!input_line.eof())
      {
        input_line >> d;
@@ -241,14 +241,18 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
      }
    }
    input.close();
-   
+   if (v.size()!=dof*dof) {
+    cerr << "ERROR. Please delete '"<< filename << "'." << endl;
+    exit(1);
+   }
    m.setZero(dof,dof);
-   
+
    for (int i=0; i<dof; i++)
      for (int j=0; j<dof; j++)
        m(i,j) = v[i*dof + j];
+
    cout<<"MatrixXd of "<<filename<<" read done!"<<endl; 
-   cout<<"Matrix:"<<m; 
+   // cout<<"Matrix:"<<m; 
    return true;
  }
  
@@ -259,21 +263,21 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
      if (!overwrite)
      {
        // File exists, but overwriting is not allowed. Abort.
-       std::cerr << "File '" << filename << "' already exists. Not saving data." << std::endl;
+       cerr << "File '" << filename << "' already exists. Not saving data." << endl;
        return false;
      }
    //}
    
    
-   std::ofstream file;
+   ofstream file;
    file.open(filename.c_str());
    if (!file.is_open())
    {
-     std::cerr << "Couldn't open file '" << filename << "' for writing." << std::endl;
+     cerr << "Couldn't open file '" << filename << "' for writing." << endl;
      return false;
    }
    
-   file << std::fixed;
+   file << fixed;
    file << matrix;
    file.close();
    

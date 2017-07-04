@@ -20,6 +20,7 @@
 #include <memory>
 
 using namespace Eigen;
+using namespace std;
 namespace LAMMPS_NS{
 
 //       0        1          2         3  4  5  6  7  8           9               10         11          12           13 
@@ -33,10 +34,10 @@ FixVRTransitionOMP::FixVRTransitionOMP (
         Nthreads(atof(arg[12])),mode(atof(arg[13]))
 {       
   if(narg != 14) error->all(FLERR, "Illegal fix vrtransitionOMP command");
-  if (mode==0) std::cout<<"Simulation Mode: Two Way"<<std::endl;
-  else if (mode==1) std::cout<<"Simulation Mode: Absorbing"<<std::endl;
+  if (mode==0) cout<<"Simulation Mode: Two Way"<<endl;
+  else if (mode==1) cout<<"Simulation Mode: Absorbing"<<endl;
   else error->all(FLERR, "Illegal fix vrtransitionOMP mode");
-  std::cout<<"using "<<Nthreads<<" threads"<<std::endl;
+  cout<<"using "<<Nthreads<<" threads"<<endl;
   omp_set_dynamic(0);     // Explicitly disable dynamic teams
   omp_set_num_threads(Nthreads);
   Eigen::initParallel();
@@ -52,13 +53,13 @@ FixVRTransitionOMP::init ()
   if (!m_initialized){
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
-  std::cout<<"START INIT"<<std::endl;
+  cout<<"START INIT"<<endl;
   m_initialized = true;
   int nlocal = atom->nlocal;
   int* mask = atom->mask;
   double** x = atom->x;
   double MIN_X=x[nlocal-1][0],MAX_X=x[0][0],MIN_Y=x[nlocal-1][1],MAX_Y=x[0][1],MIN_Z=x[nlocal-1][2],MAX_Z=x[0][2];
-  std::cout<<"loop1 to find local min and MAX"<<std::endl;
+  cout<<"loop1 to find local min and MAX"<<endl;
   for ( int i=0; i<nlocal; ++i ){
     if ( mask[i] & groupbit ){
       double tempx=x[i][0],tempy=x[i][1],tempz=x[i][2];
@@ -70,8 +71,8 @@ FixVRTransitionOMP::init ()
       if (tempz<=MIN_Z) MIN_Z=tempz;
     }
   }
-  std::cout<<MIN_X<<" "<<MAX_X<<" "<<MIN_Y<<" "<<MAX_Y<<" "<<MIN_Z<<" "<<MAX_Z<<std::endl;
-  std::cout<<"loop2 to set model information"<<std::endl;
+  cout<<MIN_X<<" "<<MAX_X<<" "<<MIN_Y<<" "<<MAX_Y<<" "<<MIN_Z<<" "<<MAX_Z<<endl;
+  cout<<"loop2 to set model information"<<endl;
   int j=0;
   for ( int i=0; i<nlocal; ++i ){
     if ( mask[i] & groupbit ){
@@ -90,50 +91,50 @@ FixVRTransitionOMP::init ()
     }
   }
   K.bondNeighborIdendifier();
-  std::cout<<"bonds have been identified"<<std::endl;
+  cout<<"bonds have been identified"<<endl;
   pr.setZero(K.model.atomR2v.size()*3,1);
   pv.setZero(K.model.atomV2r.size()*3,1);
-  std::cout<<"pos real has been resized"<<std::endl;
-  std::cout<<"Atoms Global ID in the group: "<<K.model.atomGID.size()<<std::endl;
-  for (auto &e: K.model.atomGID) std::cout<<e<<" ";
-  std::cout<<std::endl;
-  std::cout<<"Atoms init-local ID in Real: "<<K.model.atomReal.size()<<std::endl;
-  for (auto &e: K.model.atomReal)    std::cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
-  std::cout<<std::endl;
+  cout<<"pos real has been resized"<<endl;
+  cout<<"Atoms Global ID in the group: "<<K.model.atomGID.size()<<endl;
+  for (auto &e: K.model.atomGID) cout<<e<<" ";
+  cout<<endl;
+  cout<<"Atoms init-local ID in Real: "<<K.model.atomReal.size()<<endl;
+  for (auto &e: K.model.atomReal)    cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
+  cout<<endl;
 
-  std::cout<<"Atoms init-local ID in Virtual: "<<K.model.atomVirtual.size()<<std::endl;
-  for (auto &e: K.model.atomVirtual) std::cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
-  std::cout<<std::endl;
+  cout<<"Atoms init-local ID in Virtual: "<<K.model.atomVirtual.size()<<endl;
+  for (auto &e: K.model.atomVirtual) cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
+  cout<<endl;
 
-  std::cout<<"Atoms init-local ID in V of VR: "<<K.model.atomV2r.size()<<std::endl;
-  for (auto &e: K.model.atomV2r)     std::cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
-  std::cout<<std::endl;
+  cout<<"Atoms init-local ID in V of VR: "<<K.model.atomV2r.size()<<endl;
+  for (auto &e: K.model.atomV2r)     cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
+  cout<<endl;
 
-  std::cout<<"Atoms init-local ID in R of VR: "<<K.model.atomR2v.size()<<std::endl;
-  for (auto &e: K.model.atomR2v)     std::cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
-  std::cout<<std::endl;
+  cout<<"Atoms init-local ID in R of VR: "<<K.model.atomR2v.size()<<endl;
+  for (auto &e: K.model.atomR2v)     cout<<"["<<e<<"]"<<K.model.atomGID[e]<<"  ";
+  cout<<endl;
 
   for (const auto& e :K.model.atomR2v){
     int gid = K.model.atomGID[e];
     int i = atom->map(gid);
-    std::vector<int>::iterator iter = std::find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
-    int jr = std::distance( K.model.atomR2v.begin(), iter );
+    vector<int>::iterator iter = find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
+    int jr = distance( K.model.atomR2v.begin(), iter );
     pr(K.bondOrAtom2MatrixDof(jr)[0],0)=x[i][0];
     pr(K.bondOrAtom2MatrixDof(jr)[1],0)=x[i][1];
     pr(K.bondOrAtom2MatrixDof(jr)[2],0)=x[i][2];
   }
-  std::cout<<"Pos[0] of R2v: "<<pr.size()<<"x1\n"<<pr.transpose()<<std::endl;
+  cout<<"Pos[0] of R2v: "<<pr.size()<<"x1\n"<<pr.transpose()<<endl;
 
   for (const auto& e :K.model.atomV2r){
     int gid = K.model.atomGID[e];
     int i = atom->map(gid);
-    std::vector<int>::iterator iter = std::find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
-    int jv = std::distance( K.model.atomV2r.begin(), iter );
+    vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
+    int jv = distance( K.model.atomV2r.begin(), iter );
     pv(K.bondOrAtom2MatrixDof(jv)[0],0)=x[i][0];
     pv(K.bondOrAtom2MatrixDof(jv)[1],0)=x[i][1];
     pv(K.bondOrAtom2MatrixDof(jv)[2],0)=x[i][2];
   }
-  std::cout<<"Pos[0] of V2r: "<<pv.size()<<"x1\n"<<pv.transpose()<<std::endl;
+  cout<<"Pos[0] of V2r: "<<pv.size()<<"x1\n"<<pv.transpose()<<endl;
 
   int* dlist;
   int n = 0;
@@ -168,10 +169,10 @@ FixVRTransitionOMP::init ()
   recount_topology();
   delete dlist;
   //delete avec;
-	std::cout<<"delete "<<n<<" atoms"<<std::endl;
+	cout<<"delete "<<n<<" atoms"<<endl;
 
 	K.calculateEigen();
-	std::cout<<"Initialization done"<<std::endl;
+	cout<<"Initialization done"<<endl;
   }
 }
 }
@@ -197,23 +198,26 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   uv.setZero(K.model.atomV2r.size()*3,1);
 #pragma omp single
 {
-  if (test) std::cout<<"i_integrate"<<std::endl;
+  if (test && t==update->dt) cout<<"i_integrate"<<endl;
   for (const auto& e :K.model.atomR2v){
     int gid = K.model.atomGID[e];
     int i = atom->map(gid);
-    std::vector<int>::iterator iter = std::find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
-    int jr = std::distance( K.model.atomR2v.begin(), iter );
+    vector<int>::iterator iter = find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
+    int jr = distance( K.model.atomR2v.begin(), iter );
     tempPr(K.bondOrAtom2MatrixDof(jr)[0],0)=x[i][0];
     tempPr(K.bondOrAtom2MatrixDof(jr)[1],0)=x[i][1];
     tempPr(K.bondOrAtom2MatrixDof(jr)[2],0)=x[i][2];
   }
   MatrixXd tempUr=tempPr-pr;
   ur.push_back(tempUr);
-  if (test) {
-    std::cout<<"tempUr: "<<tempUr.size()<<"x1\n"<<tempUr.transpose()<<std::endl;
-    std::cout<<"ur size: "<<ur.size()<<"x"<<ur[0].size()<<std::endl;
-  }
+  // if (test) {
+  //   cout<<"tempUr: "<<tempUr.size()<<"x1\n"<<tempUr.transpose()<<endl;
+  //   cout<<"ur size: "<<ur.size()<<"x"<<ur[0].size()<<endl;
+  // }
+}
 
+#pragma omp single
+{
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
   if (rmass) {
@@ -250,7 +254,6 @@ FixVRTransitionOMP::initial_integrate (int vflag)
 
 #pragma omp parallel
 {
-
 #pragma omp for
   for (int i=t/update->dt;i>=1;--i){
     double ti = i*update->dt;
@@ -267,54 +270,104 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   for (const auto& e :K.model.atomV2r){
     int gid = K.model.atomGID[e];
     int i = atom->map(gid);
-    std::vector<int>::iterator iter = std::find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
-    int jv = std::distance( K.model.atomV2r.begin(), iter );
+    vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
+    int jv = distance( K.model.atomV2r.begin(), iter );
     x[i][0]=pv(K.bondOrAtom2MatrixDof(jv)[0],0)+uv(K.bondOrAtom2MatrixDof(jv)[0],0);
     x[i][1]=pv(K.bondOrAtom2MatrixDof(jv)[1],0)+uv(K.bondOrAtom2MatrixDof(jv)[1],0);
     x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
   }
-  computeForce();
+  // computeForce();
 }
 
 }
 //---------------------------------------------------------------------------//
 
 void
-FixVRTransitionOMP::final_integrate ()
+FixVRTransitionOMP::final_integrate()
 {
+
+  double** f = atom->f;
+  double** v = atom->v;
+  int nlocal = atom->nlocal;
+  int* mask = atom->mask;
+  double *rmass = atom->rmass;
+  double *mass = atom->mass;
+  int *type = atom->type;
+//   double** x = atom->x;
+//   MatrixXd uv,tempPr,tempVr;
+//   tempPr.setZero(K.model.atomR2v.size()*3,1);
+//   tempVr.setZero(K.model.atomR2v.size()*3,1);
+//   uv.setZero(K.model.atomV2r.size()*3,1);
+
+// #pragma omp single
+// {
+//   if (test && t==update->dt) cout<<"f_integrate"<<endl;
+//   for (const auto& e :K.model.atomR2v){
+//     int gid = K.model.atomGID[e];
+//     int i = atom->map(gid);
+//     vector<int>::iterator iter = find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
+//     int jr = distance( K.model.atomR2v.begin(), iter );
+//     tempPr(K.bondOrAtom2MatrixDof(jr)[0],0)=x[i][0];
+//     tempPr(K.bondOrAtom2MatrixDof(jr)[1],0)=x[i][1];
+//     tempPr(K.bondOrAtom2MatrixDof(jr)[2],0)=x[i][2];
+//   }
+//   MatrixXd tempUr=tempPr-pr;
+//   ur.push_back(tempUr);
+////   if (test) {
+////     cout<<"tempUr: "<<tempUr.size()<<"x1\n"<<tempUr.transpose()<<endl;
+////     cout<<"ur size: "<<ur.size()<<"x"<<ur[0].size()<<endl;
+////   }
+// }
+
+
+// #pragma omp parallel
+// {
+// #pragma omp for
+//   for (int i=t/update->dt;i>=1;--i){
+//     double ti = i*update->dt;
+//     int ii = (t-ti)/update->dt;
+//     MatrixXd tempUv=update->dt*K.calculateKernelMatrix(ti)*ur[ii];
+//     #pragma omp critical
+//     {
+//       uv+=tempUv;
+//     }
+//   }
+// }
+
+// #pragma omp single
+// {
+//   for (const auto& e :K.model.atomV2r){
+//     int gid = K.model.atomGID[e];
+//     int i = atom->map(gid);
+//     vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
+//     int jv = distance( K.model.atomV2r.begin(), iter );
+//     x[i][0]=pv(K.bondOrAtom2MatrixDof(jv)[0],0)+uv(K.bondOrAtom2MatrixDof(jv)[0],0);
+//     x[i][1]=pv(K.bondOrAtom2MatrixDof(jv)[1],0)+uv(K.bondOrAtom2MatrixDof(jv)[1],0);
+//     x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
+//   }
+// }
+
+// computeForce();
+
 #pragma omp single
 {
-        double** x = atom->x;
-        double** f = atom->f;
-        double** v = atom->v;
-        int nlocal = atom->nlocal;
-        int* mask = atom->mask;
-        double *rmass = atom->rmass;
-        double *mass = atom->mass;
-        int *type = atom->type;
-
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
-  if (test) std::cout<<"f_integrate"<<std::endl;
   double dtfm;
 
   if (rmass) {
-	//for (const auto& e :K.model.atomGID){
-      for (const auto& e :K.model.atomReal){
-      int gid = K.model.atomGID[e];
-      	//int gid = e;
-	int i = atom->map(gid);
-        dtfm = dtf / rmass[i];
-        v[i][0] += dtfm * f[i][0];
-        v[i][1] += dtfm * f[i][1];
-        v[i][2] += dtfm * f[i][2];
-      }
+    for (const auto& e :K.model.atomReal){
+    int gid = K.model.atomGID[e];
+    int i = atom->map(gid);
+    dtfm = dtf / rmass[i];
+    v[i][0] += dtfm * f[i][0];
+    v[i][1] += dtfm * f[i][1];
+    v[i][2] += dtfm * f[i][2];
+  }
 
   } else {
-	//for (const auto& e :K.model.atomGID){
       for (const auto& e :K.model.atomReal){
         int gid = K.model.atomGID[e];
-	//int gid = e;
         int i = atom->map(gid);
         dtfm = dtf / mass[type[i]];
         v[i][0] += dtfm * f[i][0];
@@ -383,30 +436,9 @@ FixVRTransitionOMP::recount_topology(){
   }
 }
 
-
+// void BondHarmonic::compute(int eflag, int vflag)
 void FixVRTransitionOMP::computeForce(){
-	double** f = atom->f;
-	double** v = atom->v;
-        for (const auto& e :K.model.atomReal){
-                int gid = K.model.atomGID[e];
-                int i = atom->map(gid);
-                f[i][0]=f[i][1]=f[i][2]=0.;
-        }
-	
-        //for (const auto& e :K.model.atomVirtual){
-        for (const auto& e :K.model.atomV2r){
-	        int gid = K.model.atomGID[e];
-                int i = atom->map(gid);
-                f[i][0]=f[i][1]=f[i][2]=v[i][0]=v[i][1]=v[i][2]=0.;
-        }
-
-	force->bond->compute(1,1);
-        /*
-	for (const auto& e :K.model.atomV2r){
-                int gid = K.model.atomGID[e];
-                int i = atom->map(gid);
-                f[i][0]=f[i][1]=f[i][2]=0.;
-        }*/
-
+  force->bond->compute(1,1);
 }
+
 }
