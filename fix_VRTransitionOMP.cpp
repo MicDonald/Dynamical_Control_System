@@ -251,7 +251,6 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   }
 }
 
-
 #pragma omp parallel
 {
 #pragma omp for
