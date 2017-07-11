@@ -251,13 +251,14 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   }
 }
 
+
 #pragma omp parallel
 {
 #pragma omp for
   for (int i=t/update->dt;i>=1;--i){
     double ti = i*update->dt;
     int ii = (t-ti)/update->dt;
-    MatrixXd tempUv=update->dt*K.calculateKernelMatrix(ti)*ur[ii];
+    MatrixXd tempUv=update->dt*( K.calculateKernelMatrix(ti-update->dt/2) + K.calculateKernelMatrix(ti+update->dt/2))/2 * ur[ii];
     #pragma omp critical
     {
       uv+=tempUv;
@@ -275,7 +276,7 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     x[i][1]=pv(K.bondOrAtom2MatrixDof(jv)[1],0)+uv(K.bondOrAtom2MatrixDof(jv)[1],0);
     x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
   }
-  // computeForce();
+  computeForce();
 }
 
 }

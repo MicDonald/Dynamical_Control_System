@@ -37,12 +37,12 @@ Eigen::MatrixXd KernelMatrix::localKe(vector<double> p1, vector<double> p2){
     MatrixXd J2(2,6);
     MatrixXd J3(2,6);
     J1<<cx,cy,cz,0.,0.,0.,0.,0.,0.,cx,cy,cz;
-    J2<<cy,cz,cx,0.,0.,0.,0.,0.,0.,cy,cz,cx;
-    J3<<cz,cx,cy,0.,0.,0.,0.,0.,0.,cz,cx,cy;
-    MatrixXd ke = J1.transpose() * k * J1 +
-                  J2.transpose() * k * J2 +
-                  J3.transpose() * k * J3;
-    //MatrixXd ke=J1.transpose() * k * J1;
+    // J2<<cy,cz,cx,0.,0.,0.,0.,0.,0.,cy,cz,cx;
+    // J3<<cz,cx,cy,0.,0.,0.,0.,0.,0.,cz,cx,cy;
+    // MatrixXd ke = J1.transpose() * k * J1 +
+    //               J2.transpose() * k * J2 +
+    //               J3.transpose() * k * J3;
+    MatrixXd ke=J1.transpose() * k * J1;
     return ke*k_mass;
 }
 
@@ -182,32 +182,33 @@ if (d(0,0)<1e-10){
 MatrixXd KernelMatrix::calculateKernelMatrix(double t){ 
 //#pragma omp critical
 //{
-    MatrixXd sinF,reducedKM;
-    sinF.setZero(vdof,vdof);
-    reducedKM.setZero(v2rdof, r2vdof);
-    for (int i = 0;i<vdof; ++i)
-	for (int j =0;j<vdof; ++j){
-        	if (i==j) sinF(i,j)=sin(sqrt(d(i,j))*t)/sqrt(d(i,j));
-	}
-    MatrixXd tempKM=(X*sinF*(X.transpose()))*(-DVR);
-    //cout<<"tempKM\n"<<tempKM<<endl;
-    //cout<<"Reduced KM size:"<<v2rdof<<"x"<<r2vdof<<endl;
-    int k=0,l=0;
-    for (int i = 0;i<vdof; ++i){
-	if(count(V2Rdof.begin(),V2Rdof.end(),Vdof[i])==1){
-            for (int j =0;j<rdof; ++j){
-                if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
-	            //cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
-		    reducedKM(k,l)=tempKM(i,j);
-	    	    ++l;
-	        }
+  MatrixXd sinF,reducedKM;
+  sinF.setZero(vdof,vdof);
+  reducedKM.setZero(v2rdof, r2vdof);
+  for (int i = 0;i<vdof; ++i){
+	 for (int j = 0;j<vdof; ++j){
+    if (i==j && d(i,j)==d(i,j) && abs(d(i,j))>1e-9) sinF(i,j)=sin(sqrt(d(i,j))*t)/sqrt(d(i,j));
+	 }
+  }
+  MatrixXd tempKM=(X*sinF*(X.transpose()))*(-DVR);
+  //cout<<"tempKM\n"<<tempKM<<endl;
+  //cout<<"Reduced KM size:"<<v2rdof<<"x"<<r2vdof<<endl;
+  int k=0,l=0;
+  for (int i = 0;i<vdof; ++i){
+    if(count(V2Rdof.begin(),V2Rdof.end(),Vdof[i])==1){
+      for (int j =0;j<rdof; ++j){
+        if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
+	      //cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
+		      reducedKM(k,l)=tempKM(i,j);
+	    	  ++l;
+        }
 	    }
 	    ++k;
 	    l=0;
-        }
+      }
     }
     //cout<<"reducedKM:\n"<<reducedKM<<endl;
-    return reducedKM;
+  return reducedKM;
 //}
 }
 
