@@ -163,7 +163,7 @@ void KernelMatrix::calculateEigen(){
   if (!(succ1 && succ2)){
   #pragma omp parallel
   {
-    SelfAdjointEigenSolver<MatrixXd> solver(DV);
+  SelfAdjointEigenSolver<MatrixXd> solver(DV);
   #pragma omp single
   {
     d = solver.eigenvalues().asDiagonal();

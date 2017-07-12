@@ -1,0 +1,12 @@
+/home/mkdonald/ABC/kernelCalculator
+Time is Wed Sep 21 12:33:04 CST 2016
+Directory is /home/mkdonald/ABC/kernelCalculator
+68976.hcserver.cluster ABC on hcserver.cluster
+Nodefile: /var/spool/PBS/aux//68976.hcserver.cluster
+This jobs runs on the following nodes:
+node14
+This job has allocated 1 cores
+=================================================
+/var/spool/PBS/mom_priv/jobs/68976.hcserver.cluster.SC: line 21: ./console: No such file or directory
+=================================================
+Ending time is Wed Sep 21 12:33:04 CST 2016

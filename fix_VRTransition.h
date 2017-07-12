@@ -38,7 +38,6 @@ protected:
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	std::vector<Eigen::MatrixXd> ur;
-	std::vector<bool> conv;
 };
 
 }

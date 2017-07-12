@@ -23,7 +23,6 @@ public:
     std::vector<int> bondOrAtom2MatrixDof(std::vector<int>);
     std::vector<int> bondOrAtom2MatrixDof(int);
     void calculateEigen();
-    void initial_KernelMatrix();
     Eigen::SparseMatrix<double> calculateKernelMatrix(double);
     void setK_mass(double);
     double getK_mass();

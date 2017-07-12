@@ -1,0 +1,39 @@
+/home/mkdonald/ABC/kernelCalculator/serial
+Time is Wed Sep 21 15:13:16 CST 2016
+Directory is /home/mkdonald/ABC/kernelCalculator/serial
+68998.hcserver.cluster ABC on hcserver.cluster
+Nodefile: /var/spool/PBS/aux//68998.hcserver.cluster
+This jobs runs on the following nodes:
+node14
+This job has allocated 1 cores
+=================================================
+k00:-2
+k01:0
+k10:0
+k11:-0
+k00:-0
+k01:0
+k10:0
+k11:-2
+matrix size: 4
+dof: 2
+eVector size: 2
+eValues size: 4
+kk: 2
+factor: -2
+kk: 3
+factor: 0
+kk: 2
+factor: 0
+kk: 3
+factor: 0
+kk: 2
+factor: -2
+kk: 3
+factor: 0
+kk: 2
+factor: 0
+kk: 3
+factor: 0
+=================================================
+Ending time is Wed Sep 21 15:13:16 CST 2016

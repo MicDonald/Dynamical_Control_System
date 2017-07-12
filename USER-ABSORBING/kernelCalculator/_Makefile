@@ -1,0 +1,49 @@
+.DEFAULT_GOAL := console
+
+CC_PATH = /opt/gcc-5.2.0
+CC = $(CC_PATH)/bin/g++
+MPICC = /opt/openmpi/1.10.1/gnu520/bin/mpicxx
+POTENTIALPACK_PATH = ../potentialPack
+
+CFLAGS = --std=c++14 -O3 -Wextra -DMKL_ILP64 -fopenmp -m64 -I${POTENTIALPACK_PATH} -I/opt/intel/Compiler/11.0/074/mkl/include/ 
+MPI_CFLAGS = --std=c++14 -O3 -Wextra -DMKL_ILP64 -DPARALLEL -m64 -I${POTENTIALPACK_PATH} -I/opt/intel/Compiler/11.0/074/mkl/include/
+
+LDFLAGS = -L${POTENTIALPACK_PATH}/.. -lpotentialPack -L/opt/intel/Compiler/11.0/074/mkl/lib/intel64 -lmkl_intel_ilp64 -lmkl_core -lmkl_gnu_thread -lpthread -lgomp -lm -ldl -Wl,--rpath=/opt/intel/Compiler/11.0/074/mkl/lib/intel64,--rpath=/opt/gcc-5.2.0/lib64
+MPI_LDFLAGS = -L${POTENTIALPACK_PATH}/.. -lpotentialPack -L/opt/intel/mkl/lib/intel64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_core -lmkl_sequential -lmkl_blacs_openmpi_ilp64 -lpthread -lm -Wl,--rpath=/opt/openmpi/1.10.1/gcc520/lib,--rpath=/opt/intel/mkl/lib/intel64,--rpath=$(CC_PATH)/lib64
+
+OBJDIR = serial
+MPI_OBJDIR = mpiobj
+
+CPPFILES = Lattice_Diamond.cpp \
+	Lattice_Triangular.cpp \
+	main.cpp
+
+OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(CPPFILES))
+MPI_OBJS = $(patsubst %.cpp,$(MPI_OBJDIR)/%.o,$(CPPFILES))
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+	cp ./job.sh $(OBJDIR)
+$(MPI_OBJDIR):
+	mkdir -p $(MPI_OBJDIR)
+
+$(OBJDIR)/%.o: %.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(MPI_OBJDIR)/%.o: %.cpp
+	$(MPICC) $(MPI_CFLAGS) -c $< -o $@
+
+clean:
+	rm -rf $(OBJDIR)/*.o
+	rm -f $(OBJDIR)/console
+	rm -rf $(MPI_OBJDIR)/*.o
+	rm -f $(MPI_OBJDIR)/console
+
+console: $(OBJDIR) $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(OBJDIR)/console
+
+mpi: $(MPI_OBJDIR) $(MPI_OBJS)
+	$(MPICC) $(MPI_OBJS) $(MPI_LDFLAGS) -o $(MPI_OBJDIR)/console
+
+dd:
+	rm -rf serial

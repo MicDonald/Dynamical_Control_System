@@ -1,0 +1,28 @@
+potentialPack
+See https://github.com/1412chen/potentialPack for more detail
+
+Pair/Bond potential:
+- Harmonic bond potential
+- Lennard-Jones potential
+- Buckingham potential
+- Morse potential
+
+Angle potential:
+- Harmonic angle potential
+- Harmonic cosine angle potential
+- Cosine angle potential
+- Quartic potential
+- Screened harmonic potential
+- Compass potential
+
+Bond+Angle potential:
+- Stillinger-Weber potential
+
+Dihedral potential
+- Cosine dihedral potential
+- Harmonic dihedral potential
+- Harmonic cosine dihedral potential
+
+Many body potential
+- 
+

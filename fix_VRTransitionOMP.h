@@ -19,9 +19,7 @@ public:
 	void final_integrate();
 	void computeForce();
 	//void pre_force(int);
-	//void post_force(int);		
-
-	
+	//void post_force(int);
 
 protected:
 	void recount_topology();
