@@ -21,10 +21,13 @@ public:
 	//void pre_force(int);
 	//void post_force(int);		
 
+	
+
 protected:
 	void recount_topology();
 	int Nthreads;
 	int mode;
+	std::vector<Eigen::SparseMatrix<double>> KM;
 };
 
 }

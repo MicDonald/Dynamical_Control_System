@@ -19,11 +19,11 @@ namespace LAMMPS_NS {
 class FixVRTransition: public FixNVE{
 public:
 	FixVRTransition(class LAMMPS *, int, char **);
-	virtual int setmask();
-	virtual void init();
-	virtual void initial_integrate(int);
-	virtual void final_integrate();
-	virtual void computeForce();
+	int setmask();
+	// virtual void init();
+	// virtual void initial_integrate(int);
+	// virtual void final_integrate();
+	// virtual void computeForce();
 	//void pre_force(int);
 	//void post_force(int);		
 	
@@ -38,6 +38,7 @@ protected:
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	std::vector<Eigen::MatrixXd> ur;
+	std::vector<bool> conv;
 };
 
 }

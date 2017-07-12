@@ -9,6 +9,7 @@
 #include "mkl.h"
 #include "VRAtomInfo.h"
 #include "Eigen/Dense"
+#include "Eigen/Sparse"
 #include "Eigen/Core"
 #include "omp.h"
 #include <set>
@@ -22,7 +23,8 @@ public:
     std::vector<int> bondOrAtom2MatrixDof(std::vector<int>);
     std::vector<int> bondOrAtom2MatrixDof(int);
     void calculateEigen();
-    Eigen::MatrixXd calculateKernelMatrix(double);
+    void initial_KernelMatrix();
+    Eigen::SparseMatrix<double> calculateKernelMatrix(double);
     void setK_mass(double);
     double getK_mass();
     int getvDof(){return vdof;};

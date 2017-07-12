@@ -110,87 +110,86 @@ vector<int> KernelMatrix::bondOrAtom2MatrixDof(int atomID){
 
 
 void KernelMatrix::calculateEigen(){
-    gdof = model.atomGID.size()*3;
-    vdof = model.atomVirtual.size()*3;
-    rdof = model.atomReal.size()*3;
-    v2rdof = model.atomV2r.size()*3;
-    r2vdof = model.atomR2v.size()*3;
+  gdof = model.atomGID.size()*3;
+  vdof = model.atomVirtual.size()*3;
+  rdof = model.atomReal.size()*3;
+  v2rdof = model.atomV2r.size()*3;
+  r2vdof = model.atomR2v.size()*3;
+  SparseMatrix<double> D;
+  d.resize(vdof, vdof);
+  X.resize(vdof, vdof);
+  D.resize(gdof,gdof);
+  DVR.resize(vdof, rdof); 
+  MatrixXd DV(vdof,vdof);
 
-    MatrixXd D;
-    d.setZero(vdof, vdof);
-    X.setZero(vdof, vdof);
-    D.setZero(gdof,gdof);
-    DVR.setZero(vdof, rdof); 
-    MatrixXd DV(vdof,vdof);
 #pragma omp single
 {
-    for(const auto& e : bonds){
-        auto dof = bondOrAtom2MatrixDof(e);
-	int i=0,j=0;
-	auto ke=localKe(model.atomCoord[e[0]],model.atomCoord[e[1]]);
-        for (const auto& eRow : dof){
-            for (const auto& eCol :dof){
-                D(eRow,eCol)+=ke(i,j);
-                ++j;
-            }
-            j=0;
-            ++i;
-        }
+  for(const auto& e : bonds){
+    auto dof = bondOrAtom2MatrixDof(e);
+    int i=0,j=0;
+    auto ke=localKe(model.atomCoord[e[0]],model.atomCoord[e[1]]);
+    for (const auto& eRow : dof){
+      for (const auto& eCol :dof){
+        D.coeffRef(eRow,eCol)+=ke(i,j);
+        ++j;
+      }
+      j=0;
+      ++i;
     }
-    cout<<"D: "<<gdof<<"x"<<D.size()/gdof<<endl;
-    Vdof=bondOrAtom2MatrixDof(model.atomVirtual);
-    Rdof=bondOrAtom2MatrixDof(model.atomReal);
-    V2Rdof=bondOrAtom2MatrixDof(model.atomV2r);
-    R2Vdof=bondOrAtom2MatrixDof(model.atomR2v);
-    int i=0,j=0,k=0;
-    for (const auto& eRow : Vdof){
-        for (const auto& eCol : Vdof){
-            DV(i,j)=D(eRow,eCol);
-            ++j;
-        }
-        for (const auto& eCol : Rdof){
-            DVR(i,k)=D(eRow,eCol);
-            ++k;
-        }
+  }
+  cout<<"D: "<<gdof<<"x"<<D.outerSize()<<endl;
+  Vdof=bondOrAtom2MatrixDof(model.atomVirtual);
+  Rdof=bondOrAtom2MatrixDof(model.atomReal);
+  V2Rdof=bondOrAtom2MatrixDof(model.atomV2r);
+  R2Vdof=bondOrAtom2MatrixDof(model.atomR2v);
+  int i=0,j=0,k=0;
+  for (const auto& eRow : Vdof){
+    for (const auto& eCol : Vdof){
+      DV(i,j)=D.coeff(eRow,eCol);
+      ++j;
+    }
+    for (const auto& eCol : Rdof){
+      DVR(i,k)=D.coeff(eRow,eCol);
+      ++k;
+    }
 	++i;
 	j=k=0;
-    }
-
-    cout<<"DV: "<<vdof<<"x"<<DV.size()/vdof<<endl;
-    cout<<"DVR:"<<vdof<<"x"<<rdof<<endl;
+  }
+  cout<<"DV: "<<vdof<<"x"<<DV.size()/vdof<<endl;
+  cout<<"DVR:"<<vdof<<"x"<<rdof<<endl;
 }
-    loadMatrix("evalue",this->d,vdof);
-    loadMatrix("evector",this->X,vdof);
-if (d(0,0)<1e-10){
-#pragma omp parallel
-{
+  bool succ1 = loadMatrix("evalue",this->d,vdof);
+  bool succ2 = loadMatrix("evector",this->X,vdof);
+  if (!(succ1 && succ2)){
+  #pragma omp parallel
+  {
     SelfAdjointEigenSolver<MatrixXd> solver(DV);
-#pragma omp single
-{
+  #pragma omp single
+  {
     d = solver.eigenvalues().asDiagonal();
-    X = solver.eigenvectors();
+    X = solver.eigenvectors(); 
     saveMatrix("evalue",d,true);
     saveMatrix("evector",X,true);
     cout<<"eigen calculation done"<<endl;
-}
-}
-}
-// cout<<"eigen value after loading"<<endl;
-// cout<<d<<endl;
+  }
+  }
+  }
 }
 
-MatrixXd KernelMatrix::calculateKernelMatrix(double t){ 
+
+
+SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){ 
 //#pragma omp critical
 //{
-  MatrixXd sinF,reducedKM;
+  MatrixXd sinF;
+  SparseMatrix<double> reducedKM;
   sinF.setZero(vdof,vdof);
-  reducedKM.setZero(v2rdof, r2vdof);
+  reducedKM.resize(v2rdof, r2vdof);
   for (int i = 0;i<vdof; ++i){
-	 for (int j = 0;j<vdof; ++j){
-    if (i==j && d(i,j)==d(i,j) && abs(d(i,j))>1e-9) sinF(i,j)=sin(sqrt(d(i,j))*t)/sqrt(d(i,j));
-	 }
+    if (d(i,i)==d(i,i) && abs(d(i,i))>1e-9) sinF(i,i)=sin(sqrt(d(i,i))*t)/sqrt(d(i,i));
   }
   MatrixXd tempKM=(X*sinF*(X.transpose()))*(-DVR);
+  // return tempKM;
   //cout<<"tempKM\n"<<tempKM<<endl;
   //cout<<"Reduced KM size:"<<v2rdof<<"x"<<r2vdof<<endl;
   int k=0,l=0;
@@ -199,7 +198,7 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
       for (int j =0;j<rdof; ++j){
         if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
 	      //cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
-		      reducedKM(k,l)=tempKM(i,j);
+		      reducedKM.insert(k,l)=tempKM(i,j);
 	    	  ++l;
         }
 	    }
@@ -207,9 +206,8 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
 	    l=0;
       }
     }
-    //cout<<"reducedKM:\n"<<reducedKM<<endl;
+  // cout<<"reducedKM:\n"<<reducedKM<<endl;
   return reducedKM;
-//}
 }
 
 
@@ -277,7 +275,7 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
      cerr << "Couldn't open file '" << filename << "' for writing." << endl;
      return false;
    }
-   
+   // MatrixXd tempMatrix = matrix;
    file << fixed;
    file << matrix;
    file.close();

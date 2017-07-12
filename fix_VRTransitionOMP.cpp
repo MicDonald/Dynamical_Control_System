@@ -18,7 +18,6 @@
 #include <iostream>
 #include <string>
 #include <memory>
-
 using namespace Eigen;
 using namespace std;
 namespace LAMMPS_NS{
@@ -170,7 +169,6 @@ FixVRTransitionOMP::init ()
   delete dlist;
   //delete avec;
 	cout<<"delete "<<n<<" atoms"<<endl;
-
 	K.calculateEigen();
 	cout<<"Initialization done"<<endl;
   }
@@ -209,6 +207,14 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     tempPr(K.bondOrAtom2MatrixDof(jr)[2],0)=x[i][2];
   }
   MatrixXd tempUr=tempPr-pr;
+  bool compute_conv=false;
+  for (int i = 0; i<tempUr.size();++i){
+    if (abs(tempUr(i))>1e-6){
+      compute_conv=true;
+      break;
+    }
+  }
+  conv.push_back(compute_conv);
   ur.push_back(tempUr);
   // if (test) {
   //   cout<<"tempUr: "<<tempUr.size()<<"x1\n"<<tempUr.transpose()<<endl;
@@ -251,20 +257,24 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   }
 }
 
+KM.push_back(K.calculateKernelMatrix(t));
 
 #pragma omp parallel
 {
 #pragma omp for
   for (int i=t/update->dt;i>=1;--i){
-    double ti = i*update->dt;
-    int ii = (t-ti)/update->dt;
-    MatrixXd tempUv=update->dt*( K.calculateKernelMatrix(ti-update->dt/2) + K.calculateKernelMatrix(ti+update->dt/2))/2 * ur[ii];
+    // double ti = i*update->dt;
+    int ii = t/update->dt-i;
+    if(!conv[ii]) continue;
+    MatrixXd tempUv=update->dt*KM[i]*ur[ii];
+    //MatrixXd tempUv=update->dt*KM*ur[ii];
     #pragma omp critical
     {
       uv+=tempUv;
     }
   }
 }
+
 #pragma omp single
 {
   for (const auto& e :K.model.atomV2r){
@@ -277,6 +287,7 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
   }
   computeForce();
+
 }
 
 }
