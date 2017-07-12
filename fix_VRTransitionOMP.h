@@ -16,8 +16,8 @@ public:
 	FixVRTransitionOMP(class LAMMPS *, int, char **);	
 	void init();
 	void initial_integrate(int);
-	void final_integrate();
-	void computeForce();
+	//void final_integrate();
+	//void computeForce();
 	//void pre_force(int);
 	//void post_force(int);
 
