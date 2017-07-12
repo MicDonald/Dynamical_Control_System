@@ -1,6 +1,0 @@
-#ifndef ROTATION_H_INCLUDED
-#define ROTATION_H_INCLUDED
-
-enum Rotation {X180, Y180, Z180, MX, MY, MZ, RXYZ};
-
-#endif // ROTATION_H_INCLUDED
