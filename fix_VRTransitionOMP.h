@@ -16,7 +16,7 @@ public:
 	FixVRTransitionOMP(class LAMMPS *, int, char **);	
 	void init();
 	void initial_integrate(int);
-	//void final_integrate();
+	void final_integrate();
 	//void computeForce();
 	//void pre_force(int);
 	//void post_force(int);
@@ -26,6 +26,7 @@ protected:
 	int Nthreads;
 	int mode;
 	std::vector<Eigen::SparseMatrix<double>> KM;
+	int ifNVE;
 };
 
 }
