@@ -31,7 +31,7 @@ if (test $mode = 1) then
    # make mpi -j 8
    # cd USER-VRTRANSITION
   if (test $runtype = 1) then
-    cp fix_VRTransitionOMP.* ..
+    cp fix_* ..
     cd ..
     make omp -j 8
     cd _VR

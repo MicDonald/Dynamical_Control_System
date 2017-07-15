@@ -12,7 +12,7 @@ KernelMatrix::KernelMatrix(const VRAtomInfo& model):model(model){
 }
 
 void KernelMatrix::setK_mass(double k_m){
-	k_mass=k_m;
+  k_mass=k_m;
 }
 
 double KernelMatrix::getK_mass(){
@@ -51,33 +51,33 @@ void KernelMatrix::bondNeighborIdendifier(){
     for (int i = 0 ;i<model.atomGID.size();++i){
         for (int j = 0 ;j<model.atomGID.size();++j){
             if (i!=j){
-	    double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
-            if (temp<L) L = temp;
+              double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
+              if (temp<L) L = temp;
             }
-	}
+        }
     }
     cout<<"bond Length: "<<L<<endl;
     for (int i = 0 ;i<model.atomGID.size();++i){
-        for (int j = 0 ;j<model.atomGID.size();++j){        
-            if(i!=j){
-	    double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
-            if (abs(temp-L)<10e-3){
-                vector<int> tempV={j,i};
-                if (count(bonds.begin(),bonds.end(),tempV) == 0)
-                    bonds.insert( { i, j } );
-                if (count(model.atomVirtual.begin(),model.atomVirtual.end(),i) == 1
-                 && count(model.atomReal.begin(),model.atomReal.end(),j) == 1)
-                    VRbonds.insert( { i, j } );
-            }
-	    }
+      for (int j = 0 ;j<model.atomGID.size();++j){        
+        if(i!=j){
+          double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
+          if (abs(temp-L)<10e-3){
+            vector<int> tempV={j,i};
+            if (count(bonds.begin(),bonds.end(),tempV) == 0)
+              bonds.insert( { i, j } );
+            if (count(model.atomVirtual.begin(),model.atomVirtual.end(),i) == 1
+            && count(model.atomReal.begin(),model.atomReal.end(),j) == 1)
+              VRbonds.insert( { i, j } );
+          }
         }
+      }
     }
     set<int> tempV,tempR;
     cout<<"Identify "<<bonds.size()<<" bonds:"<<endl;
     cout<<VRbonds.size()<<" VRbonds:"<<endl;
     for (const auto& e : VRbonds){
         tempV.insert(e[0]);
-	tempR.insert(e[1]);
+        tempR.insert(e[1]);
         cout<<"V :"<<e[0]<<" &R: "<<e[1]<<" ";
     }
     cout<<endl;
@@ -91,8 +91,8 @@ void KernelMatrix::bondNeighborIdendifier(){
         cout<<"["<<e<<"]"<<model.atomGID[e]<<" ";
     }
     cout<<endl;
-
 }
+
 
 vector<int> KernelMatrix::bondOrAtom2MatrixDof(vector<int> atomList){
     vector<int> dof;
@@ -181,14 +181,21 @@ void KernelMatrix::calculateEigen(){
 SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){ 
 //#pragma omp critical
 //{
-  MatrixXd sinF;
+  MatrixXd sinHF;
   SparseMatrix<double> reducedKM;
-  sinF.setZero(vdof,vdof);
+  sinHF.setZero(vdof,vdof);
   reducedKM.resize(v2rdof, r2vdof);
   for (int i = 0;i<vdof; ++i){
-    if (d(i,i)==d(i,i) && abs(d(i,i))>1e-9) sinF(i,i)=sin(sqrt(d(i,i))*t)/sqrt(d(i,i));
+    if (d(i,i)==d(i,i) && abs(d(i,i))>1e-9) {
+      complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
+      complex<double> sinH = sinh(t * wi);
+      // cout<<wi<<"\n"<<sinH<<"\n"<<real(sinH/wi)<<"\n"<<imag(sinH/wi)<<endl;
+      // double sinHFtemp=sinH/wi;
+      sinHF(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
+      // cout<<"sinHF: "<< sinHF(i,i)<<endl;
+    }
   }
-  MatrixXd tempKM=(X*sinF*(X.transpose()))*(-DVR);
+  MatrixXd tempKM=(X*sinHF*(X.transpose()))*(-DVR);
   // return tempKM;
   //cout<<"tempKM\n"<<tempKM<<endl;
   //cout<<"Reduced KM size:"<<v2rdof<<"x"<<r2vdof<<endl;
@@ -210,6 +217,17 @@ SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){
   return reducedKM;
 }
 
+
+
+void KernelMatrix::set0state(MatrixXd uv0, MatrixXd vv0){
+  if(this->uv0.size()==uv0.size()){
+    cout<<"zero state error"<<endl;
+    exit(1);
+  }
+  this->uv0=uv0;
+  this->vv0=vv0;
+
+}
 
  
  //template<typename int RowsAtCompileTime, int ColsAtCompileTime>

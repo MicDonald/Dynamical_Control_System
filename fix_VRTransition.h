@@ -14,6 +14,28 @@ FixStyle(VRTransition, FixVRTransition)
 #include <vector>
 #include "KernelMatrix.h"
 #include "VRAtomInfo.h"
+#include <cstdlib>
+#include "lattice.h"
+#include "neighbor.h"
+#include "atom_vec.h"
+#include "domain.h"
+#include "error.h"
+#include "force.h"
+#include "update.h"
+#include "bond.h"
+#include "atom.h"
+#include "molecule.h"
+#include "memory.h"
+#include "verlet.h"
+#include "group.h"
+#include <iterator>
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <string>
+#include <memory>
+
+
 namespace LAMMPS_NS {
 
 class FixVRTransition: public FixNVE{
@@ -28,16 +50,22 @@ public:
 	//void post_force(int);		
 	
 protected:
-	double test;
 	void recount_topology();
+	int iarg=7;
+	double test;
 	bool m_initialized;
 	double minX,maxX,minY,maxY,minZ,maxZ;
+	int Vgroupbit;
 	double k_mass=1.;
 	KernelMatrix K;
 	double t=0,tc=10;
+	std::string type;
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
+	Eigen::MatrixXd pv_all;
 	std::vector<Eigen::MatrixXd> ur;
+	std::vector<Eigen::SparseMatrix<double>> KM;
+	int mode;
 };
 
 }

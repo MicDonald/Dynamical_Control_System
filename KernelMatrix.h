@@ -31,6 +31,7 @@ public:
     int getgDof(){return gdof;};
     int getv2rDof(){return v2rdof;};
     int getr2vDof(){return r2vdof;};
+    void set0state(Eigen::MatrixXd,Eigen::MatrixXd);
     VRAtomInfo model;
 protected:
     int gdof,vdof,rdof,v2rdof,r2vdof;
@@ -38,6 +39,8 @@ protected:
     std::set<std::vector<int> > bonds;
     std::set<std::vector<int> > VRbonds;
     std::vector<int> Vdof,Rdof,V2Rdof,R2Vdof;
+    Eigen::MatrixXd vv0;
+    Eigen::MatrixXd uv0;
     Eigen::MatrixXd X;
     Eigen::MatrixXd d;
     Eigen::MatrixXd DVR;
