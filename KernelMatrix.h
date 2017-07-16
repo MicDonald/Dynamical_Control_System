@@ -43,7 +43,8 @@ protected:
     Eigen::MatrixXd uv0;
     Eigen::MatrixXd X;
     Eigen::MatrixXd d;
-    Eigen::MatrixXd DVR;
+    // Eigen::MatrixXd DVR;
+    Eigen::MatrixXd DVRreduced;
 };
 bool loadMatrix(std::string,Eigen::MatrixXd&,int);
 bool saveMatrix(std::string,Eigen::MatrixXd,bool);

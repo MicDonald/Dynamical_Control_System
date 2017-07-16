@@ -6,9 +6,6 @@ KernelMatrix::KernelMatrix(const VRAtomInfo& model):model(model){
     gdof = model.atomGID.size()*3;
     vdof = model.atomVirtual.size()*3;
     rdof = model.atomReal.size()*3;
-    DVR.resize(vdof, rdof);
-    d.resize(vdof, vdof);
-    X.resize(vdof, vdof);
 }
 
 void KernelMatrix::setK_mass(double k_m){
@@ -119,7 +116,7 @@ void KernelMatrix::calculateEigen(){
   d.resize(vdof, vdof);
   X.resize(vdof, vdof);
   D.resize(gdof,gdof);
-  DVR.resize(vdof, rdof); 
+  DVRreduced.resize(vdof, r2vdof); 
   MatrixXd DV(vdof,vdof);
 
 #pragma omp single
@@ -148,15 +145,15 @@ void KernelMatrix::calculateEigen(){
       DV(i,j)=D.coeff(eRow,eCol);
       ++j;
     }
-    for (const auto& eCol : Rdof){
-      DVR(i,k)=D.coeff(eRow,eCol);
+    for (const auto& eCol : R2Vdof){
+      DVRreduced(i,k)=D.coeff(eRow,eCol);
       ++k;
     }
 	++i;
 	j=k=0;
   }
   cout<<"DV: "<<vdof<<"x"<<DV.size()/vdof<<endl;
-  cout<<"DVR:"<<vdof<<"x"<<rdof<<endl;
+  cout<<"DVRreduced:"<<vdof<<"x"<<r2vdof<<endl;
 }
   bool succ1 = loadMatrix("evalue",this->d,vdof);
   bool succ2 = loadMatrix("evector",this->X,vdof);
@@ -181,33 +178,37 @@ void KernelMatrix::calculateEigen(){
 SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){ 
 //#pragma omp critical
 //{
-  MatrixXd sinHF;
+  SparseMatrix<double> sinHF;
+  sinHF.resize(vdof,vdof);
+
   SparseMatrix<double> reducedKM;
-  sinHF.setZero(vdof,vdof);
   reducedKM.resize(v2rdof, r2vdof);
   for (int i = 0;i<vdof; ++i){
     if (d(i,i)==d(i,i) && abs(d(i,i))>1e-9) {
-      complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
+      // complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
+      // complex<double> sinH = sinh(t * wi);
+      // sinHF(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
+      
+      //no uv0
+      complex<double> wi = sqrt( complex<double>(- d(i,i) +vv0(i,0)));
       complex<double> sinH = sinh(t * wi);
-      // cout<<wi<<"\n"<<sinH<<"\n"<<real(sinH/wi)<<"\n"<<imag(sinH/wi)<<endl;
-      // double sinHFtemp=sinH/wi;
-      sinHF(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
-      // cout<<"sinHF: "<< sinHF(i,i)<<endl;
+      sinHF.insert(i,i)=real(sinH/wi);
     }
   }
-  MatrixXd tempKM=(X*sinHF*(X.transpose()))*(-DVR);
+  MatrixXd tempKM=(X*sinHF*(X.transpose()))*(-DVRreduced);
   // return tempKM;
   //cout<<"tempKM\n"<<tempKM<<endl;
   //cout<<"Reduced KM size:"<<v2rdof<<"x"<<r2vdof<<endl;
   int k=0,l=0;
   for (int i = 0;i<vdof; ++i){
     if(count(V2Rdof.begin(),V2Rdof.end(),Vdof[i])==1){
-      for (int j =0;j<rdof; ++j){
-        if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
-	      //cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
-		      reducedKM.insert(k,l)=tempKM(i,j);
+      for (int j =0;j<r2vdof; ++j){
+        // if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
+	      // cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
+		    // reducedKM.insert(k,l)=tempKM(i,j);
+          reducedKM.insert(k,l)=tempKM(i,j);
 	    	  ++l;
-        }
+        // }
 	    }
 	    ++k;
 	    l=0;

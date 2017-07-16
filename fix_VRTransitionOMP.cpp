@@ -33,8 +33,7 @@ FixVRTransitionOMP::FixVRTransitionOMP (
         char **arg
 ) :     FixVRTransition(lmp, narg, arg),
         Nthreads(atof(arg[iarg]))
-{   
-  cout<<"using "<<Nthreads<<" threads"<<endl;   
+{      
   if(iarg != 8 && iarg != 13) error->all(FLERR, "Illegal fix vrtransitionOMP command");
   cout<<"using "<<Nthreads<<" threads"<<endl;
   omp_set_dynamic(0);     // Explicitly disable dynamic teams
@@ -42,16 +41,15 @@ FixVRTransitionOMP::FixVRTransitionOMP (
   Eigen::initParallel();
   Eigen::setNbThreads(Nthreads);
 
-  if (!m_initialized){
+  if (!equi_initialized){
     dtv = update->dt;
     dtf = 0.5 * update->dt * force->ftm2v;
     cout<<"START INIT"<<endl;
-    m_initialized = true;
     int nlocal = atom->nlocal;
     int* mask = atom->mask;
     double** x = atom->x;
     int j=0;
-    if(type=="length"){
+    if(VRtype=="length"){
       double MIN_X=x[nlocal-1][0],MAX_X=x[0][0],MIN_Y=x[nlocal-1][1],MAX_Y=x[0][1],MIN_Z=x[nlocal-1][2],MAX_Z=x[0][2];
       cout<<"loop1 to find local min and MAX"<<endl;
       for ( int i=0; i<nlocal; ++i ){
@@ -86,7 +84,7 @@ FixVRTransitionOMP::FixVRTransitionOMP (
       }
     }
 
-    else if(type=="group"){
+    else if(VRtype=="group"){
       for ( int i=0; i<nlocal; ++i ){
         if ( mask[i] & groupbit ){
           K.model.atomGID.push_back(atom->tag[i]);
@@ -150,6 +148,7 @@ FixVRTransitionOMP::FixVRTransitionOMP (
       pv(K.bondOrAtom2MatrixDof(jv)[1],0)=x[i][1];
       pv(K.bondOrAtom2MatrixDof(jv)[2],0)=x[i][2];
     }
+    cout<<"Pos[0] of Virtual: "<<pv_all.size()<<"x1\n"<<endl;
     cout<<"Pos[0] of V2r: "<<pv.size()<<"x1\n"<<pv.transpose()<<endl;
 
     for (const auto& e :K.model.atomVirtual){
@@ -161,43 +160,22 @@ FixVRTransitionOMP::FixVRTransitionOMP (
       pv_all(K.bondOrAtom2MatrixDof(jv)[1],0)=x[i][1];
       pv_all(K.bondOrAtom2MatrixDof(jv)[2],0)=x[i][2];
     }
-    cout<<"Pos[0] of Virtual: "<<pv_all.size()<<"x1\n"<<endl;
-
     K.calculateEigen();
     cout<<"Initialization done"<<endl;
+    equi_initialized = true;
   }
 }
 
 //---------------------------------------------------------------------------//
-// void
-// FixVRTransitionOMP::init ()
-// {
-
-// }
-
-//---------------------------------------------------------------------------//
-
 void
-FixVRTransitionOMP::initial_integrate (int vflag)
+FixVRTransitionOMP::init ()
 {
-  double** x = atom->x;
-  double** f = atom->f;
-  double** v = atom->v;
-  int nlocal = atom->nlocal;
-  int* mask = atom->mask;
-  double *rmass = atom->rmass;
-  double *mass = atom->mass;
-	int *type = atom->type;
-  double dtfm;
-  
-  MatrixXd uv,tempPr,tempVr;
-  tempPr.setZero(K.model.atomR2v.size()*3,1);
-  tempVr.setZero(K.model.atomR2v.size()*3,1);
-  uv.setZero(K.model.atomV2r.size()*3,1);
-  t+=update->dt;
-
 // zero state
-  if (t==update->dt){
+  if (!zero_initialized){
+    double** x = atom->x;
+    double** v = atom->v;
+    int nlocal = atom->nlocal;
+
     MatrixXd tempPv,tempVv;
     tempPv.setZero(K.model.atomVirtual.size()*3,1);
     tempVv.setZero(K.model.atomVirtual.size()*3,1);
@@ -251,7 +229,30 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     delete dlist;
     //delete avec;
     cout<<"delete "<<n<<" atoms"<<endl;
+    zero_initialized=true;
   }
+}
+
+//---------------------------------------------------------------------------//
+
+void
+FixVRTransitionOMP::initial_integrate (int vflag)
+{
+  double** x = atom->x;
+  double** f = atom->f;
+  double** v = atom->v;
+  int nlocal = atom->nlocal;
+  int* mask = atom->mask;
+  double *rmass = atom->rmass;
+  double *mass = atom->mass;
+	int *type = atom->type;
+  double dtfm;
+  
+  MatrixXd uv,tempPr,tempVr;
+  tempPr.setZero(K.model.atomR2v.size()*3,1);
+  tempVr.setZero(K.model.atomR2v.size()*3,1);
+  uv.setZero(K.model.atomV2r.size()*3,1);
+  t+=update->dt;
 
 //Normal NVE for real atom
 #pragma omp single

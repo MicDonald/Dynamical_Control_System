@@ -17,7 +17,7 @@ FixVRTransition::FixVRTransition (
         int narg,
         char **arg
 ) : FixNVE(lmp, narg, arg),
-	k_mass(atof(arg[3])),tc(atof((arg[4]))),mode(atof(arg[5])),type(arg[6])
+	k_mass(atof(arg[3])),tc(atof((arg[4]))),mode(atof(arg[5])),VRtype(arg[6])
 {
   if (mode==0) cout<<"Simulation Mode: Two Way"<<endl;
   else if (mode==1) cout<<"Simulation Mode: Absorbing"<<endl;
@@ -27,12 +27,12 @@ FixVRTransition::FixVRTransition (
   K.setK_mass(k_mass);
   std::cout << "k/m = "<<K.getK_mass()<<std::endl;
   std::cout << "Virtual-Real Transition initial with dt = "<<update->dt << std::endl;
-  if (type=="group"){
+  if (VRtype=="group"){
     int Vgroup = group->find(arg[iarg++]);
     if (Vgroup == -1) error->all(FLERR,"Could not find Virtual group ID");
     Vgroupbit = group->bitmask[Vgroup];
   }
-  else if (type=="length"){
+  else if (VRtype=="length"){
     minX=atof(arg[iarg++]);
     maxX=atof(arg[iarg++]);
     minY=atof(arg[iarg++]);

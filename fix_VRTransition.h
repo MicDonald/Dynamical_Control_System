@@ -53,13 +53,13 @@ protected:
 	void recount_topology();
 	int iarg=7;
 	double test;
-	bool m_initialized;
+	bool equi_initialized,zero_initialized;
 	double minX,maxX,minY,maxY,minZ,maxZ;
 	int Vgroupbit;
 	double k_mass=1.;
 	KernelMatrix K;
 	double t=0,tc=10;
-	std::string type;
+	std::string VRtype;
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	Eigen::MatrixXd pv_all;

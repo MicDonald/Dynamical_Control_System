@@ -14,7 +14,7 @@ namespace LAMMPS_NS {
 class FixVRTransitionOMP: public FixVRTransition{
 public:	
 	FixVRTransitionOMP(class LAMMPS *, int, char **);	
-	// void init();
+	void init();
 	void initial_integrate(int);
 	void final_integrate();
 	//void computeForce();
