@@ -253,7 +253,8 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   tempVr.setZero(K.model.atomR2v.size()*3,1);
   uv.setZero(K.model.atomV2r.size()*3,1);
   t+=update->dt;
-
+  
+  clock_t t_all_temp=clock();
 //Normal NVE for real atom
 #pragma omp single
 {
@@ -290,6 +291,9 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     }
   }
 }
+  clock_t Ttemp=clock();
+  t_nve+=Ttemp-t_all_temp;
+  
     
 //get ur(t+dt)
 #pragma omp single
@@ -307,14 +311,27 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   MatrixXd tempUr=tempPr-pr;
   ur.push_back(tempUr);
 
-  KM.push_back(K.calculateKernelMatrix(t));
-}
+  clock_t t_temp_KF=clock();
+  auto KF=K.calculateKernelMatrix(t);
+  t_temp_KF=clock()-t_temp_KF;
 
+  clock_t t_temp_add=clock();
+  //KM[t/update->dt]=KF;
+  KM.push_back(KF);
+  t_temp_add=clock()-t_temp_add;
+
+  t_KF+=t_temp_KF;
+  t_add+=t_temp_add;
+}
+  clock_t t_conv_temp=clock();
 #pragma omp parallel
 {
 #pragma omp for
   for (int i=t/update->dt;i>=1;--i){
     int ii = t/update->dt-i;
+    // cout <<"i: " <<i<<endl;
+    // cout <<"t: " <<t<<endl;
+    // cout <<"I: " <<t/update->dt << endl;
     MatrixXd tempUv=update->dt*KM[i-1]*ur[ii];
     // double ti = i*update->dt;
     // MatrixXd tempUv=update->dt*K.calculateKernelMatrix(ti)*ur[ii];
@@ -322,13 +339,13 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     {
       uv+=tempUv;
     }
-  }
-  
+  } 
 }
-    
-//update uv
+  t_conv+=clock()-t_conv_temp;
+
 #pragma omp single
 {
+//update uv
   for (const auto& e :K.model.atomV2r){
     int gid = K.model.atomGID[e];
     int i = atom->map(gid);
@@ -338,8 +355,19 @@ FixVRTransitionOMP::initial_integrate (int vflag)
     x[i][1]=pv(K.bondOrAtom2MatrixDof(jv)[1],0)+uv(K.bondOrAtom2MatrixDof(jv)[1],0);
     x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
   }
+  t_all+=clock()-t_all_temp;
+
+  if(int(t/update->dt)%100==0){
+    cout<<"\tNVE for real atom        : "<<1.*t_nve/CLOCKS_PER_SEC<<endl;
+    cout<<"\tcalcuation of w          : "<<1.*K.t_w/CLOCKS_PER_SEC<<endl;
+    cout<<"\tcalcuation of XVX'       : "<<1.*K.t_calK/CLOCKS_PER_SEC<<endl;
+    cout<<"\tcalculateKernelMAtrix(t) : "<<1.*t_KF/CLOCKS_PER_SEC<<endl;
+    cout<<"\tcollecting Kernel        : "<<1.*t_add/CLOCKS_PER_SEC<<endl;
+    cout<<"\ttotal time               : " << 1.*t_all/CLOCKS_PER_SEC << endl;
+    cout<<"\tconvolution              : " << 1.*t_conv/CLOCKS_PER_SEC << endl;
+    cout<<"\tall but conv             : " << 1.*(t_all-t_conv)/CLOCKS_PER_SEC << endl;
+  }
 }
-    
 }
 //---------------------------------------------------------------------------//
 
@@ -381,7 +409,7 @@ FixVRTransitionOMP::final_integrate()
       v[i][2] += dtfm * f[i][2];
     }
   }
-  
+
 }
 }
 //---------------------------------------------------------------------------//

@@ -11,6 +11,7 @@
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
 #include "Eigen/Core"
+#include <ctime>
 #include "omp.h"
 #include <set>
 class KernelMatrix {
@@ -33,6 +34,7 @@ public:
     int getr2vDof(){return r2vdof;};
     void set0state(Eigen::MatrixXd,Eigen::MatrixXd);
     VRAtomInfo model;
+    clock_t t_w=0,t_calK=0;
 protected:
     int gdof,vdof,rdof,v2rdof,r2vdof;
     double k_mass;
@@ -44,7 +46,8 @@ protected:
     Eigen::MatrixXd X;
     Eigen::MatrixXd d;
     // Eigen::MatrixXd DVR;
-    Eigen::MatrixXd DVRreduced;
+    Eigen::SparseMatrix<double> DVRreduced;
+
 };
 bool loadMatrix(std::string,Eigen::MatrixXd&,int);
 bool saveMatrix(std::string,Eigen::MatrixXd,bool);

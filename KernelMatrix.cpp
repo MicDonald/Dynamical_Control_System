@@ -58,7 +58,7 @@ void KernelMatrix::bondNeighborIdendifier(){
       for (int j = 0 ;j<model.atomGID.size();++j){        
         if(i!=j){
           double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
-          if (abs(temp-L)<10e-3){
+          if (abs(temp-L)<1e-1){
             vector<int> tempV={j,i};
             if (count(bonds.begin(),bonds.end(),tempV) == 0)
               bonds.insert( { i, j } );
@@ -146,7 +146,7 @@ void KernelMatrix::calculateEigen(){
       ++j;
     }
     for (const auto& eCol : R2Vdof){
-      DVRreduced(i,k)=D.coeff(eRow,eCol);
+      DVRreduced.insert(i,k)=D.coeff(eRow,eCol);
       ++k;
     }
 	++i;
@@ -183,37 +183,47 @@ SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){
 
   SparseMatrix<double> reducedKM;
   reducedKM.resize(v2rdof, r2vdof);
+  clock_t Ttemp=clock();
   for (int i = 0;i<vdof; ++i){
     if (d(i,i)==d(i,i) && abs(d(i,i))>1e-9) {
-      // complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
-      // complex<double> sinH = sinh(t * wi);
-      // sinHF(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
-      
-      //no uv0
-      complex<double> wi = sqrt( complex<double>(- d(i,i) +vv0(i,0)));
+      complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
       complex<double> sinH = sinh(t * wi);
-      sinHF.insert(i,i)=real(sinH/wi);
+      sinHF.insert(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
+            //no uv0
+      // complex<double> wi = sqrt( complex<double>(- d(i,i) ));
+      // complex<double> sinH = sinh(t * wi);
+      // sinHF.insert(i,i)=real(sinH/wi);
     }
   }
-  MatrixXd tempKM=(X*sinHF*(X.transpose()))*(-DVRreduced);
-  // return tempKM;
-  //cout<<"tempKM\n"<<tempKM<<endl;
-  //cout<<"Reduced KM size:"<<v2rdof<<"x"<<r2vdof<<endl;
-  int k=0,l=0;
-  for (int i = 0;i<vdof; ++i){
-    if(count(V2Rdof.begin(),V2Rdof.end(),Vdof[i])==1){
-      for (int j =0;j<r2vdof; ++j){
-        // if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
-	      // cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
-		    // reducedKM.insert(k,l)=tempKM(i,j);
-          reducedKM.insert(k,l)=tempKM(i,j);
-	    	  ++l;
-        // }
-	    }
-	    ++k;
-	    l=0;
-      }
+  t_w+=clock()-Ttemp;
+
+  Ttemp=clock();
+
+  MatrixXd left=-X*sinHF;
+  MatrixXd right=X.transpose()*DVRreduced;
+  // Matrix tempKM=left*right;
+
+  t_calK+=clock()-Ttemp;
+
+  // Ttemp=clock();
+  // int j=0;
+  for (int i = 0;i<v2rdof; ++i){
+    // if(count(V2Rdof.begin(),V2Rdof.end(),Vdof[i])==1){
+    auto iter = find( Vdof.begin(), Vdof.end(), V2Rdof[i]);
+    int ii = distance( Vdof.begin(), iter);
+
+    for (int j = 0;j<r2vdof; ++j){
+      // if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
+	    // cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
+		  // reducedKM.insert(k,l)=tempKM(i,j);
+      // cout<<"Vdof: "<<V2Rdof[i]<<" Rdof: "<<R2Vdof[j]<<"i: "<<i<<"j: "<<j<<"ii: "<<ii<<endl;
+      // reducedKM.insert(i,j)=tempKM(ii,j);
+        reducedKM.insert(i,j)=left.row(ii)*right.col(j);
+      // }
     }
+  }
+  // t_w+=clock()-Ttemp;
+    // }
   // cout<<"reducedKM:\n"<<reducedKM<<endl;
   return reducedKM;
 }

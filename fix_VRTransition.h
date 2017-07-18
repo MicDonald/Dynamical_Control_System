@@ -28,12 +28,14 @@ FixStyle(VRTransition, FixVRTransition)
 #include "memory.h"
 #include "verlet.h"
 #include "group.h"
+#include <unordered_map>
 #include <iterator>
 #include <algorithm>
 #include <functional>
 #include <iostream>
 #include <string>
 #include <memory>
+#include <ctime>
 
 
 namespace LAMMPS_NS {
@@ -53,7 +55,7 @@ protected:
 	void recount_topology();
 	int iarg=7;
 	double test;
-	bool equi_initialized,zero_initialized;
+	bool equi_initialized=false,zero_initialized=false;
 	double minX,maxX,minY,maxY,minZ,maxZ;
 	int Vgroupbit;
 	double k_mass=1.;
@@ -66,6 +68,7 @@ protected:
 	std::vector<Eigen::MatrixXd> ur;
 	std::vector<Eigen::SparseMatrix<double>> KM;
 	int mode;
+	clock_t t_all=0,t_conv=0,t_nve=0,t_KF=0,t_add=0;
 };
 
 }
