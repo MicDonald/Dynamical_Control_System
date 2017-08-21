@@ -24,7 +24,8 @@ public:
     std::vector<int> bondOrAtom2MatrixDof(std::vector<int>);
     std::vector<int> bondOrAtom2MatrixDof(int);
     void calculateEigen();
-    Eigen::SparseMatrix<double> calculateKernelMatrix(double);
+    //Eigen::SparseMatrix<double> calculateKernelMatrix(double);
+    Eigen::MatrixXd calculateKernelMatrix(double);
     void setK_mass(double);
     double getK_mass();
     int getvDof(){return vdof;};
@@ -49,6 +50,7 @@ protected:
     Eigen::SparseMatrix<double> DVRreduced;
 
 };
+void Test(int ,int);
 bool loadMatrix(std::string,Eigen::MatrixXd&,int);
 bool saveMatrix(std::string,Eigen::MatrixXd,bool);
 #endif

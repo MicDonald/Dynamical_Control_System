@@ -230,6 +230,8 @@ FixVRTransitionOMP::init ()
     //delete avec;
     cout<<"delete "<<n<<" atoms"<<endl;
     zero_initialized=true;
+    //cout<<update->nsteps<<" steps are coming"<<endl;
+    KM.reserve(20000);
   }
 }
 
@@ -357,16 +359,6 @@ FixVRTransitionOMP::initial_integrate (int vflag)
   }
   t_all+=clock()-t_all_temp;
 
-  if(int(t/update->dt)%100==0){
-    cout<<"\tNVE for real atom        : "<<1.*t_nve/CLOCKS_PER_SEC<<endl;
-    cout<<"\tcalcuation of w          : "<<1.*K.t_w/CLOCKS_PER_SEC<<endl;
-    cout<<"\tcalcuation of XVX'       : "<<1.*K.t_calK/CLOCKS_PER_SEC<<endl;
-    cout<<"\tcalculateKernelMAtrix(t) : "<<1.*t_KF/CLOCKS_PER_SEC<<endl;
-    cout<<"\tcollecting Kernel        : "<<1.*t_add/CLOCKS_PER_SEC<<endl;
-    cout<<"\ttotal time               : " << 1.*t_all/CLOCKS_PER_SEC << endl;
-    cout<<"\tconvolution              : " << 1.*t_conv/CLOCKS_PER_SEC << endl;
-    cout<<"\tall but conv             : " << 1.*(t_all-t_conv)/CLOCKS_PER_SEC << endl;
-  }
 }
 }
 //---------------------------------------------------------------------------//
@@ -407,7 +399,19 @@ FixVRTransitionOMP::final_integrate()
       v[i][0] += dtfm * f[i][0];
       v[i][1] += dtfm * f[i][1];
       v[i][2] += dtfm * f[i][2];
+
     }
+  }
+
+  if(int(t/update->dt)%100==0){
+    cout << "\tNVE for real atom        : " << 1.* t_nve/CLOCKS_PER_SEC << endl;
+    cout << "\tcalcuation of w          : " << 1.* K.t_w/CLOCKS_PER_SEC << endl;
+    cout << "\tcalcuation of XV, X'DVR  : " << 1.* K.t_calK/CLOCKS_PER_SEC << endl;
+    cout << "\tcalculateKernelMatrix(t) : " << 1.* t_KF/CLOCKS_PER_SEC << endl;
+    cout << "\tcollecting Kernel        : " << 1.* t_add/CLOCKS_PER_SEC << endl;
+    cout << "\ttotal time               : " << 1.* t_all/CLOCKS_PER_SEC << endl;
+    cout << "\tconvolution              : " << 1.* t_conv/CLOCKS_PER_SEC << endl;
+    cout << "\tall but conv             : " << 1.* (t_all-t_conv)/CLOCKS_PER_SEC << endl;
   }
 
 }

@@ -1,4 +1,5 @@
 #include "KernelMatrix.h"
+
 using namespace Eigen;
 using namespace std;
 
@@ -175,13 +176,15 @@ void KernelMatrix::calculateEigen(){
 
 
 
-SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){ 
+//SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){ 
+MatrixXd KernelMatrix::calculateKernelMatrix(double t){ 
 //#pragma omp critical
 //{
   SparseMatrix<double> sinHF;
   sinHF.resize(vdof,vdof);
 
-  SparseMatrix<double> reducedKM;
+  //SparseMatrix<double> reducedKM;
+  MatrixXd reducedKM;
   reducedKM.resize(v2rdof, r2vdof);
   clock_t Ttemp=clock();
   for (int i = 0;i<vdof; ++i){
@@ -202,29 +205,23 @@ SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){
   MatrixXd left=-X*sinHF;
   MatrixXd right=X.transpose()*DVRreduced;
   // Matrix tempKM=left*right;
-
   t_calK+=clock()-Ttemp;
-
   // Ttemp=clock();
   // int j=0;
+
+  #pragma omp parallel for
   for (int i = 0;i<v2rdof; ++i){
     // if(count(V2Rdof.begin(),V2Rdof.end(),Vdof[i])==1){
     auto iter = find( Vdof.begin(), Vdof.end(), V2Rdof[i]);
     int ii = distance( Vdof.begin(), iter);
-
     for (int j = 0;j<r2vdof; ++j){
-      // if(count(R2Vdof.begin(),R2Vdof.end(),Rdof[j])==1){
-	    // cout<<"Vdof: "<<Vdof[i]<<" Rdof: "<<Rdof[j]<<" "<<k<<" "<<l<<" "<<i<<" "<<j<<" | ";
-		  // reducedKM.insert(k,l)=tempKM(i,j);
       // cout<<"Vdof: "<<V2Rdof[i]<<" Rdof: "<<R2Vdof[j]<<"i: "<<i<<"j: "<<j<<"ii: "<<ii<<endl;
       // reducedKM.insert(i,j)=tempKM(ii,j);
-        reducedKM.insert(i,j)=left.row(ii)*right.col(j);
-      // }
+      // Test(i,j);
+      //reducedKM.insert(i,j)=left.row(ii)*right.col(j);
+      reducedKM(i,j)=left.row(ii)*right.col(j);
     }
   }
-  // t_w+=clock()-Ttemp;
-    // }
-  // cout<<"reducedKM:\n"<<reducedKM<<endl;
   return reducedKM;
 }
 
@@ -242,76 +239,79 @@ void KernelMatrix::set0state(MatrixXd uv0, MatrixXd vv0){
 
  
  //template<typename int RowsAtCompileTime, int ColsAtCompileTime>
- inline bool loadMatrix(string filename, MatrixXd& m,int dof)
- {
+inline bool loadMatrix(string filename, MatrixXd& m,int dof)
+{
    // General structure
    // 1. Read file contents into vector<double> and count number of lines
    // 2. Initialize matrix
    // 3. Put data in vector<double> into matrix
    
-   ifstream input(filename.c_str());
-   if (input.fail())
-   {
-     cout << "No '" << filename << "'." << endl;
-     return false;
-   }
-   string line;
-   double d;
+  ifstream input(filename.c_str());
+  if (input.fail())
+  {
+    cout << "No '" << filename << "'." << endl;
+    return false;
+  }
+  string line;
+  double d;
    
-   vector<double> v;
-   while (getline(input, line))
-   {
-     stringstream input_line(line);
-     while (!input_line.eof())
-     {
-       input_line >> d;
-       v.push_back(d);
-     }
-   }
-   input.close();
-   if (v.size()!=dof*dof) {
+  vector<double> v;
+  while (getline(input, line))
+  {
+    stringstream input_line(line);
+    while (!input_line.eof())
+    {
+      input_line >> d;
+      v.push_back(d);
+    }
+  }
+  input.close();
+  if (v.size()!=dof*dof) {
     cerr << "ERROR. Please delete '"<< filename << "'." << endl;
     exit(1);
-   }
-   m.setZero(dof,dof);
+  }
+  m.setZero(dof,dof);
 
-   for (int i=0; i<dof; i++)
-     for (int j=0; j<dof; j++)
-       m(i,j) = v[i*dof + j];
+  for (int i=0; i<dof; i++)
+    for (int j=0; j<dof; j++)
+      m(i,j) = v[i*dof + j];
 
-   cout<<"MatrixXd of "<<filename<<" read done!"<<endl; 
-   // cout<<"Matrix:"<<m; 
-   return true;
- }
+  cout<<"MatrixXd of "<<filename<<" read done!"<<endl; 
+  // cout<<"Matrix:"<<m; 
+  return true;
+}
  
  //template<typename int RowsAtCompileTime, int ColsAtCompileTime>
- inline bool saveMatrix(string filename, MatrixXd matrix, bool overwrite)
- {
-   //if (boost::filesystem::exists(filename)){
-     if (!overwrite)
-     {
-       // File exists, but overwriting is not allowed. Abort.
-       cerr << "File '" << filename << "' already exists. Not saving data." << endl;
-       return false;
-     }
-   //}
+inline bool saveMatrix(string filename, MatrixXd matrix, bool overwrite)
+{
+  //if (boost::filesystem::exists(filename)){
+    if (!overwrite)
+    {
+      // File exists, but overwriting is not allowed. Abort.
+      cerr << "File '" << filename << "' already exists. Not saving data." << endl;
+      return false;
+    }
+   //} 
+  ofstream file;
+  file.open(filename.c_str());
+  if (!file.is_open())
+  {
+    cerr << "Couldn't open file '" << filename << "' for writing." << endl;
+    return false;
+  }
+  // MatrixXd tempMatrix = matrix;
+  file << fixed;
+  file << matrix;
+  file.close();
    
+  return true;
    
-   ofstream file;
-   file.open(filename.c_str());
-   if (!file.is_open())
-   {
-     cerr << "Couldn't open file '" << filename << "' for writing." << endl;
-     return false;
-   }
-   // MatrixXd tempMatrix = matrix;
-   file << fixed;
-   file << matrix;
-   file.close();
-   
-   return true;
-   
- }
+}
+
+inline void Test( int n, int m )
+{
+  printf( "<T:%d> - %d, %d\n", omp_get_thread_num(), n, m );
+}
  
 
 
