@@ -11,18 +11,19 @@ runtype=1
 if (! test -e ../Makefile.package) then
   cp ../Makefile.package.empty ../Makefile.package
 fi
-rm ../fix_VRTransition*
+#rm ../fix_VRTransition*
+rm ../fix_TransientResponse*
 sed -i -e 's/-I\/opt\/intel\/Compiler\/11.0\/074\/mkl\/include //' ../Makefile.package
-sed -i -e 's/-I..\/USER-VRTRANSITION //' ../Makefile.package
-sed -i -e 's/-L..\/USER-VRTRANSITION //' ../Makefile.package
-sed -i -e 's/-lVRTransition //' ../Makefile.package
+sed -i -e 's/-I..\/USER-DYNAMICAL_CTRLSYSTEM //' ../Makefile.package
+sed -i -e 's/-L..\/USER-DYNAMICAL_CTRLSYSTEM //' ../Makefile.package
+sed -i -e 's/-lDynamicalCtrlSystem //' ../Makefile.package
 
 if (test $mode = 1) then
   cp fix_VRTransition.* ..
   sed -i -e 's/^PKG_INC =[ \t]*/&-I\/opt\/intel\/Compiler\/11.0\/074\/mkl\/include /' ../Makefile.package
-  sed -i -e 's/^PKG_INC =[ \t]*/&-I..\/USER-VRTRANSITION /' ../Makefile.package
-  sed -i -e 's/^PKG_PATH =[ \t]*/&-L..\/USER-VRTRANSITION /' ../Makefile.package
-  sed -i -e 's/^PKG_LIB =[ \t]*/&-lVRTransition /' ../Makefile.package
+  sed -i -e 's/^PKG_INC =[ \t]*/&-I..\/USER-DYNAMICAL_CTRLSYSTEM /' ../Makefile.package
+  sed -i -e 's/^PKG_PATH =[ \t]*/&-L..\/USER-DYNAMICAL_CTRLSYSTEM /' ../Makefile.package
+  sed -i -e 's/^PKG_LIB =[ \t]*/&-lDynamicalCtrlSystem /' ../Makefile.package
 
   #if (test $runtype = 2) then
    #sed -i -e 's/^PKG_INC =[ \t]*/&-I..\/opt/intel/Compiler/11.0/074/mkl/include /' ../Makefile.package
@@ -34,14 +35,14 @@ if (test $mode = 1) then
     cp fix_* ..
     cd ..
     make omp -j 8
-    cd _VR
+    cd _DCS
     #make OpenMP_LIB
   elif (test $runtype = 0) then 
     make LIB
     cd ..
-    rm fix_VRTransitionOMP.*
+    rm fix_DynamicalCtrlSystem.*
     make serial -j 8
-    cd _VR
+    cd _DCS
   fi
 fi
 

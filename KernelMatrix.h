@@ -7,7 +7,7 @@
 #include <fstream>
 #include <algorithm>
 #include "mkl.h"
-#include "VRAtomInfo.h"
+#include "AtomInfo.h"
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
 #include "Eigen/Core"

@@ -31,18 +31,18 @@ $(OBJDIR)/%.o: %.cpp
 #	$(CC) $(OMP_CFLAGS) -c -fopenmp $< -o $@
 
 clean:
-	rm -f $(LIBDIR)/libVRTransition.a
+	rm -f $(LIBDIR)/libDynamicalCtrlSystem.a
 	rm -rf $(OBJDIR)/*.o
 	rm -f $(OBJDIR)/console
 
 LIB: $(OBJS)
-	ar rvs $(LIBDIR)/libVRTransition.a $(OBJS)
+	ar rvs $(LIBDIR)/libDynamicalCtrlSystem.a $(OBJS)
 
 mpi: $(OBJS) $(MPI_OBJS) 
-	ar rvs $(LIBDIR)/libVRTransition.a $(OBJS) $(MPI_OBJS) 
+	ar rvs $(LIBDIR)/libDynamicalCtrlSystem.a $(OBJS) $(MPI_OBJS) 
 
 omp: $(OBJS) $(OMP_OBJS)
-	ar rvs $(LIBDIR)/libVRTransition.a $(OBJS) $(OMP_OBJS)
+	ar rvs $(LIBDIR)/libDynamicalCtrlSystem.a $(OBJS) $(OMP_OBJS)
 
 test: $(OBJDIR)/main.o $(OBJS)
 	$(CC) $(OBJDIR)/main.o $(OBJS) -Wl,--rpath=$(C_ROOT)/lib64,--rpath=$(MPI_ROOT)/lib -o $(OBJDIR)/console
