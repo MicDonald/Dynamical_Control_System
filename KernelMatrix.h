@@ -21,6 +21,7 @@ public:
     double length3D(std::vector<double> , std::vector<double>);
     Eigen::MatrixXd localKe(std::vector<double>, std::vector<double>);
     void bondNeighborIdendifier();
+    void angleNeighborIdendifier();
     std::vector<int> bondOrAtom2MatrixDof(std::vector<int>);
     std::vector<int> bondOrAtom2MatrixDof(int);
     void calculateEigen();
@@ -46,6 +47,7 @@ protected:
     Eigen::MatrixXd uv0;
     Eigen::MatrixXd X;
     Eigen::MatrixXd d;
+    Eigen::MatrixXd right;
     // Eigen::MatrixXd DVR;
     Eigen::SparseMatrix<double> DVRreduced;
 

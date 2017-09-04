@@ -91,6 +91,10 @@ void KernelMatrix::bondNeighborIdendifier(){
     cout<<endl;
 }
 
+void KernelMatrix::angleNeighborIdendifier(){
+
+
+}
 
 vector<int> KernelMatrix::bondOrAtom2MatrixDof(vector<int> atomList){
     vector<int> dof;
@@ -135,6 +139,9 @@ void KernelMatrix::calculateEigen(){
       ++i;
     }
   }
+
+
+  
   cout<<"D: "<<gdof<<"x"<<D.outerSize()<<endl;
   Vdof=bondOrAtom2MatrixDof(model.atomVirtual);
   Rdof=bondOrAtom2MatrixDof(model.atomReal);
@@ -172,6 +179,7 @@ void KernelMatrix::calculateEigen(){
   }
   }
   }
+  right=X.transpose()*DVRreduced;
 }
 
 
@@ -203,7 +211,7 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
   Ttemp=clock();
 
   MatrixXd left=-X*sinHF;
-  MatrixXd right=X.transpose()*DVRreduced;
+  
   // Matrix tempKM=left*right;
   t_calK+=clock()-Ttemp;
   // Ttemp=clock();
