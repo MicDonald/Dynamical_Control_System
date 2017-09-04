@@ -14,6 +14,7 @@
 #include <ctime>
 #include "omp.h"
 #include <set>
+#include <map>
 class KernelMatrix {
 public:
     KernelMatrix(){};
@@ -22,8 +23,9 @@ public:
     Eigen::MatrixXd localKe(std::vector<double>, std::vector<double>);
     void bondNeighborIdendifier();
     void angleNeighborIdendifier();
-    std::vector<int> bondOrAtom2MatrixDof(std::vector<int>);
-    std::vector<int> bondOrAtom2MatrixDof(int);
+    std::vector<int> bondOrAtom2MatrixDof(const std::vector<int>);
+    std::vector<int> bondOrAtom2MatrixDof(const std::pair<int,int>);
+    std::vector<int> bondOrAtom2MatrixDof(const int);
     void calculateEigen();
     //Eigen::SparseMatrix<double> calculateKernelMatrix(double);
     Eigen::MatrixXd calculateKernelMatrix(double);
@@ -40,8 +42,10 @@ public:
 protected:
     int gdof,vdof,rdof,v2rdof,r2vdof;
     double k_mass;
-    std::set<std::vector<int> > bonds;
-    std::set<std::vector<int> > VRbonds;
+    std::set<std::vector<int> > pairs;
+    //std::set<std::vector<int> > VRbonds;
+    std::multimap<int,int> bonds;
+    std::multimap<int,int> VRbonds;   
     std::vector<int> Vdof,Rdof,V2Rdof,R2Vdof;
     Eigen::MatrixXd vv0;
     Eigen::MatrixXd uv0;

@@ -4,9 +4,9 @@ using namespace Eigen;
 using namespace std;
 
 KernelMatrix::KernelMatrix(const VRAtomInfo& model):model(model){
-    gdof = model.atomGID.size()*3;
-    vdof = model.atomVirtual.size()*3;
-    rdof = model.atomReal.size()*3;
+  gdof = model.atomGID.size()*3;
+  vdof = model.atomVirtual.size()*3;
+  rdof = model.atomReal.size()*3;
 }
 
 void KernelMatrix::setK_mass(double k_m){
@@ -14,81 +14,85 @@ void KernelMatrix::setK_mass(double k_m){
 }
 
 double KernelMatrix::getK_mass(){
-        return k_mass;
+  return k_mass;
 }
 double KernelMatrix::length3D(vector<double> p1, vector<double> p2){
-    if(p1.size() != 3 || p2.size() != 3){
-        cout<<"Error: position must have 3 dimension"<<endl;
-        return 0.;
+  if(p1.size() != 3 || p2.size() != 3){
+    cout<<"Error: position must have 3 dimension"<<endl;
+    return 0.;
     }
-    else
-        return sqrt((p1[0]-p2[0])*(p1[0]-p2[0])+(p1[1]-p2[1])*(p1[1]-p2[1])+(p1[2]-p2[2])*(p1[2]-p2[2]));
+  else
+    return sqrt((p1[0]-p2[0])*(p1[0]-p2[0])+(p1[1]-p2[1])*(p1[1]-p2[1])+(p1[2]-p2[2])*(p1[2]-p2[2]));
 }
 Eigen::MatrixXd KernelMatrix::localKe(vector<double> p1, vector<double> p2){
-    Matrix2d k;
-    k<<1,-1,-1,1;
-    double bondLength = length3D(p1, p2);
-    double cx=(p2[0]-p1[0])/bondLength;
-    double cy=(p2[1]-p1[1])/bondLength;
-    double cz=(p2[2]-p1[2])/bondLength;
-    MatrixXd J1(2,6);
-    MatrixXd J2(2,6);
-    MatrixXd J3(2,6);
-    J1<<cx,cy,cz,0.,0.,0.,0.,0.,0.,cx,cy,cz;
-    // J2<<cy,cz,cx,0.,0.,0.,0.,0.,0.,cy,cz,cx;
-    // J3<<cz,cx,cy,0.,0.,0.,0.,0.,0.,cz,cx,cy;
-    // MatrixXd ke = J1.transpose() * k * J1 +
-    //               J2.transpose() * k * J2 +
-    //               J3.transpose() * k * J3;
-    MatrixXd ke=J1.transpose() * k * J1;
-    return ke*k_mass;
+  Matrix2d k;
+  k<<1,-1,-1,1;
+  double bondLength = length3D(p1, p2);
+  double cx=(p2[0]-p1[0])/bondLength;
+  double cy=(p2[1]-p1[1])/bondLength;
+  double cz=(p2[2]-p1[2])/bondLength;
+  MatrixXd J1(2,6);
+  MatrixXd J2(2,6);
+  MatrixXd J3(2,6);
+  J1<<cx,cy,cz,0.,0.,0.,0.,0.,0.,cx,cy,cz;
+  // J2<<cy,cz,cx,0.,0.,0.,0.,0.,0.,cy,cz,cx;
+  // J3<<cz,cx,cy,0.,0.,0.,0.,0.,0.,cz,cx,cy;
+  // MatrixXd ke = J1.transpose() * k * J1 +
+  // J2.transpose() * k * J2 +
+  // J3.transpose() * k * J3;
+  MatrixXd ke=J1.transpose() * k * J1;
+  return ke*k_mass;
 }
 
 void KernelMatrix::bondNeighborIdendifier(){
-    double L = 10000.;
-    for (int i = 0 ;i<model.atomGID.size();++i){
-        for (int j = 0 ;j<model.atomGID.size();++j){
-            if (i!=j){
-              double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
-              if (temp<L) L = temp;
-            }
-        }
+  double L = 10000.;
+  for (int i = 0 ;i<model.atomGID.size();++i){
+    for (int j = 0 ;j<model.atomGID.size();++j){
+      if (i!=j){
+        double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
+        if (temp<L) L = temp;
+      }
     }
-    cout<<"bond Length: "<<L<<endl;
-    for (int i = 0 ;i<model.atomGID.size();++i){
-      for (int j = 0 ;j<model.atomGID.size();++j){        
-        if(i!=j){
-          double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
-          if (abs(temp-L)<1e-1){
-            vector<int> tempV={j,i};
-            if (count(bonds.begin(),bonds.end(),tempV) == 0)
-              bonds.insert( { i, j } );
-            if (count(model.atomVirtual.begin(),model.atomVirtual.end(),i) == 1
-            && count(model.atomReal.begin(),model.atomReal.end(),j) == 1)
-              VRbonds.insert( { i, j } );
-          }
+  }
+  cout<<"bond Length: "<<L<<endl;
+  for (int i = 0 ;i<model.atomGID.size();++i){
+    for (int j = 0 ;j<model.atomGID.size();++j){        
+      if(i!=j){
+        double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
+        if (abs(temp-L)<1e-1){
+          bonds.insert( { i, j } );
+          std::vector<int> tempV={j,i};
+          if (count(pairs.begin(),pairs.end(),tempV) == 0)
+            pairs.insert( { i, j } );
+          if (count(model.atomVirtual.begin(),model.atomVirtual.end(),i) == 1
+          && count(model.atomReal.begin(),model.atomReal.end(),j) == 1)
+            VRbonds.insert( { i, j } );
         }
       }
     }
-    set<int> tempV,tempR;
-    cout<<"Identify "<<bonds.size()<<" bonds:"<<endl;
-    cout<<VRbonds.size()<<" VRbonds:"<<endl;
-    for (const auto& e : VRbonds){
-        tempV.insert(e[0]);
-        tempR.insert(e[1]);
-        cout<<"V :"<<e[0]<<" &R: "<<e[1]<<" ";
-    }
-    cout<<endl;
-    model.atomV2r.assign(tempV.begin(),tempV.end());
-    model.atomR2v.assign(tempR.begin(),tempR.end());
-    for (const auto& e : model.atomV2r){
-        cout<<"["<<e<<"]"<<model.atomGID[e]<<" ";
-    }
-    cout<<endl;
-    for (const auto& e : model.atomR2v){
-        cout<<"["<<e<<"]"<<model.atomGID[e]<<" ";
-    }
-    cout<<endl;
+  }
+  set<int> tempV,tempR;
+  cout<<"Identify "<<bonds.size()<<" bonds."<<endl;
+  cout<<"Identify "<<pairs.size()/2<<" pairs."<<endl;
+  cout<<VRbonds.size()<<" VRbonds:"<<endl;
+  for (const auto& e : VRbonds){
+    // tempV.insert(e[0]);
+    // tempR.insert(e[1]);
+    tempV.insert(e.first);
+    tempR.insert(e.second);
+    cout<<"V :"<<e.first<<" &R: "<<e.second<<" ";
+  }
+  cout<<endl;
+  model.atomV2r.assign(tempV.begin(),tempV.end());
+  model.atomR2v.assign(tempR.begin(),tempR.end());
+  for (const auto& e : model.atomV2r){
+    cout<<"["<<e<<"]"<<model.atomGID[e]<<" ";
+  }
+  cout<<endl;
+  for (const auto& e : model.atomR2v){
+    cout<<"["<<e<<"]"<<model.atomGID[e]<<" ";
+  }
+  cout<<endl;
 }
 
 void KernelMatrix::angleNeighborIdendifier(){
@@ -96,14 +100,24 @@ void KernelMatrix::angleNeighborIdendifier(){
 
 }
 
-vector<int> KernelMatrix::bondOrAtom2MatrixDof(vector<int> atomList){
+vector<int> KernelMatrix::bondOrAtom2MatrixDof(const vector<int> atomList){
     vector<int> dof;
     for (int i=0;i<atomList.size();++i)
         for (int ii=0;ii<3;++ii)
             dof.push_back(atomList[i]*3+ii);
     return dof;
 }
-vector<int> KernelMatrix::bondOrAtom2MatrixDof(int atomID){
+
+vector<int> KernelMatrix::bondOrAtom2MatrixDof(const pair<int,int> atomList){
+  vector<int> dof;
+  for (int ii=0;ii<3;++ii)
+    dof.push_back(atomList.first*3+ii);
+  for (int ii=0;ii<3;++ii)
+    dof.push_back(atomList.second*3+ii);
+  return dof;
+}
+
+vector<int> KernelMatrix::bondOrAtom2MatrixDof(const int atomID){
     vector<int> dof;
     for (int ii=0;ii<3;++ii)
     	dof.push_back(atomID*3+ii);
@@ -126,10 +140,11 @@ void KernelMatrix::calculateEigen(){
 
 #pragma omp single
 {
-  for(const auto& e : bonds){
+  for(const auto& e : pairs){
     auto dof = bondOrAtom2MatrixDof(e);
     int i=0,j=0;
     auto ke=localKe(model.atomCoord[e[0]],model.atomCoord[e[1]]);
+    //auto ke=localKe(model.atomCoord[e.first],model.atomCoord[e.second]);
     for (const auto& eRow : dof){
       for (const auto& eCol :dof){
         D.coeffRef(eRow,eCol)+=ke(i,j);
