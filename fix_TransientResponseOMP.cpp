@@ -1,24 +1,4 @@
 #include "fix_TransientResponseOMP.h"
-#include <cstdlib>
-#include "lattice.h"
-#include "neighbor.h"
-#include "atom_vec.h"
-#include "domain.h"
-#include "error.h"
-#include "force.h"
-#include "update.h"
-#include "bond.h"
-#include "pair.h"
-#include "atom.h"
-#include "molecule.h"
-#include "memory.h"
-#include "verlet.h"
-#include <iterator>
-#include <algorithm>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <memory>
 
 using namespace Eigen;
 using namespace std;
@@ -34,7 +14,7 @@ FixTransientResponseOMP::FixTransientResponseOMP (
 ) :     FixTransientResponse(lmp, narg, arg),
         Nthreads(atof(arg[iarg]))
 {      
-  if(iarg != 8 && iarg != 13) error->all(FLERR, "Illegal fix TransientResponseOMP command");
+  if(iarg != 9 && iarg != 14) error->all(FLERR, "Illegal fix TransientResponseOMP command");
   cout<<"using "<<Nthreads<<" threads"<<endl;
   omp_set_dynamic(0);     // Explicitly disable dynamic teams
   omp_set_num_threads(Nthreads);
@@ -49,7 +29,7 @@ FixTransientResponseOMP::FixTransientResponseOMP (
     int* mask = atom->mask;
     double** x = atom->x;
     int j=0;
-    if(VRtype=="length"){
+    if(simType=="custom"){
       double MIN_X=x[nlocal-1][0],MAX_X=x[0][0],MIN_Y=x[nlocal-1][1],MAX_Y=x[0][1],MIN_Z=x[nlocal-1][2],MAX_Z=x[0][2];
       cout<<"loop1 to find local min and MAX"<<endl;
       for ( int i=0; i<nlocal; ++i ){
@@ -84,7 +64,7 @@ FixTransientResponseOMP::FixTransientResponseOMP (
       }
     }
 
-    else if(VRtype=="group"){
+    else if(simType=="group"){
       for ( int i=0; i<nlocal; ++i ){
         if ( mask[i] & groupbit ){
           K.model.atomGID.push_back(atom->tag[i]);
@@ -104,6 +84,8 @@ FixTransientResponseOMP::FixTransientResponseOMP (
 
     K.bondNeighborIdendifier();
     cout<<"bonds have been identified"<<endl;
+    K.angleNeighborIdendifier();
+    
     pr.setZero(K.model.atomR2v.size()*3,1);
     pv.setZero(K.model.atomV2r.size()*3,1);
     pv_all.setZero(K.model.atomVirtual.size()*3,1);

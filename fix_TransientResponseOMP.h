@@ -23,8 +23,11 @@ public:
 
 protected:
 	int Nthreads;
+
+	
 };
 
 }
 #endif
 #endif
+ 

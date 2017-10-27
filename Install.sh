@@ -19,7 +19,7 @@ sed -i -e 's/-L..\/USER-DYNAMICAL_CTRLSYSTEM //' ../Makefile.package
 sed -i -e 's/-lDynamicalCtrlSystem //' ../Makefile.package
 
 if (test $mode = 1) then
-  cp fix_VRTransition.* ..
+  cp fix_* ..
   sed -i -e 's/^PKG_INC =[ \t]*/&-I\/opt\/intel\/Compiler\/11.0\/074\/mkl\/include /' ../Makefile.package
   sed -i -e 's/^PKG_INC =[ \t]*/&-I..\/USER-DYNAMICAL_CTRLSYSTEM /' ../Makefile.package
   sed -i -e 's/^PKG_PATH =[ \t]*/&-L..\/USER-DYNAMICAL_CTRLSYSTEM /' ../Makefile.package

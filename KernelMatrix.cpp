@@ -3,15 +3,20 @@
 using namespace Eigen;
 using namespace std;
 
-KernelMatrix::KernelMatrix(const VRAtomInfo& model):model(model){
+KernelMatrix::KernelMatrix(const DynamicalCtrlSystem& model):model(model){
   gdof = model.atomGID.size()*3;
   vdof = model.atomVirtual.size()*3;
   rdof = model.atomReal.size()*3;
 }
 
-void KernelMatrix::setK_mass(double k_m){
-  k_mass=k_m;
+void KernelMatrix::setK_mass(double k_mass){
+  this->k_mass=k_mass;
 }
+
+void KernelMatrix::setAngle(double angle){
+  this->angle=angle;
+}
+
 
 double KernelMatrix::getK_mass(){
   return k_mass;
@@ -54,6 +59,7 @@ void KernelMatrix::bondNeighborIdendifier(){
       }
     }
   }
+
   cout<<"bond Length: "<<L<<endl;
   for (int i = 0 ;i<model.atomGID.size();++i){
     for (int j = 0 ;j<model.atomGID.size();++j){        
@@ -73,7 +79,7 @@ void KernelMatrix::bondNeighborIdendifier(){
   }
   set<int> tempV,tempR;
   cout<<"Identify "<<bonds.size()<<" bonds."<<endl;
-  cout<<"Identify "<<pairs.size()/2<<" pairs."<<endl;
+  cout<<"Identify "<<pairs.size()<<" pairs."<<endl;
   cout<<VRbonds.size()<<" VRbonds:"<<endl;
   for (const auto& e : VRbonds){
     // tempV.insert(e[0]);
@@ -96,8 +102,20 @@ void KernelMatrix::bondNeighborIdendifier(){
 }
 
 void KernelMatrix::angleNeighborIdendifier(){
-
-
+  if (angle==0) return 0;
+  for (int o = 0 ;o<model.atomGID.size();++o){
+    pair<multimap<int,int>::iterator, 
+    multimap<int,int>::iterator> allBonded = bonds.equal_range(o);
+    for (auto a = allBonded.first; a != allBonded.second; ++a){
+      for (auto b = a + 1; b != allBonded.second; ++b){
+        int A = *a, B = *b;
+        double OA = length3D(model.atomCoord[o],model.atomCoord[A]);
+        double OB = length3D(model.atomCoord[o],model.atomCoord[B]);
+        double AB = length3D(model.atomCoord[A],model.atomCoord[B]);
+        if ( abs( AB*AB - OA*OA + OB*OB - 2*OA*OB*cos(angle)) < 1e-6) angles.insert( { A, o, B} );
+      }
+    }
+  }
 }
 
 vector<int> KernelMatrix::bondOrAtom2MatrixDof(const vector<int> atomList){
@@ -156,15 +174,15 @@ void KernelMatrix::calculateEigen(){
   }
 
 
-  
   cout<<"D: "<<gdof<<"x"<<D.outerSize()<<endl;
   Vdof=bondOrAtom2MatrixDof(model.atomVirtual);
   Rdof=bondOrAtom2MatrixDof(model.atomReal);
   V2Rdof=bondOrAtom2MatrixDof(model.atomV2r);
   R2Vdof=bondOrAtom2MatrixDof(model.atomR2v);
   int i=0,j=0,k=0;
-  for (const auto& eRow : Vdof){
-    for (const auto& eCol : Vdof){
+  for (const auto& eRow : Vdof
+
+      for (const auto& eCol : Vdof){
       DV(i,j)=D.coeff(eRow,eCol);
       ++j;
     }
@@ -215,10 +233,6 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
       complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
       complex<double> sinH = sinh(t * wi);
       sinHF.insert(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
-            //no uv0
-      // complex<double> wi = sqrt( complex<double>(- d(i,i) ));
-      // complex<double> sinH = sinh(t * wi);
-      // sinHF.insert(i,i)=real(sinH/wi);
     }
   }
   t_w+=clock()-Ttemp;
