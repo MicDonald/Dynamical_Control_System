@@ -1,20 +1,25 @@
 #include "fix_TransientResponseOMP.h"
 
+
 using namespace Eigen;
 using namespace std;
 namespace LAMMPS_NS{
 
-//    8 or 13
-//   Nthreads  
+
+
+//       0        1          2                    3                   4             5         6               7             8 
+//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tcutoff      (bool)VRinverse  VgroupID
+//    9
+//  Nthreads   
 
 FixTransientResponseOMP::FixTransientResponseOMP (
         class LAMMPS *lmp,
         int narg,
         char **arg
 ) :     FixTransientResponse(lmp, narg, arg),
-        Nthreads(atof(arg[iarg]))
+        Nthreads(atof(arg[9]))
 {      
-  if(iarg != 9 && iarg != 14) error->all(FLERR, "Illegal fix TransientResponseOMP command");
+  if(narg != 10) error->all(FLERR, "Illegal fix TransientResponseOMP command");
   cout<<"using "<<Nthreads<<" threads"<<endl;
   omp_set_dynamic(0);     // Explicitly disable dynamic teams
   omp_set_num_threads(Nthreads);
@@ -29,63 +34,27 @@ FixTransientResponseOMP::FixTransientResponseOMP (
     int* mask = atom->mask;
     double** x = atom->x;
     int j=0;
-    if(simType=="custom"){
-      double MIN_X=x[nlocal-1][0],MAX_X=x[0][0],MIN_Y=x[nlocal-1][1],MAX_Y=x[0][1],MIN_Z=x[nlocal-1][2],MAX_Z=x[0][2];
-      cout<<"loop1 to find local min and MAX"<<endl;
-      for ( int i=0; i<nlocal; ++i ){
-        if ( mask[i] & groupbit ){
-          double tempx=x[i][0],tempy=x[i][1],tempz=x[i][2];
-          if (tempx>=MAX_X) MAX_X=tempx;
-          if (tempx<=MIN_X) MIN_X=tempx;
-          if (tempy>=MAX_Y) MAX_Y=tempy;
-          if (tempy<=MIN_Y) MIN_Y=tempy;
-          if (tempz>=MAX_Z) MAX_Z=tempz;
-          if (tempz<=MIN_Z) MIN_Z=tempz;
+
+    for ( int i=0; i<nlocal; ++i ){
+      if ( mask[i] & groupbit ){
+        K.model.atomGID.push_back(atom->tag[i]);
+        K.model.atomCoord.push_back({x[i][0],x[i][1],x[i][2]});
+        if(mask[i] & Vgroupbit){
+          if (mode==0) K.model.atomVirtual.push_back(j);
+          else if(mode==1) K.model.atomReal.push_back(j);
         }
-      }
-      cout<<MIN_X<<" "<<MAX_X<<" "<<MIN_Y<<" "<<MAX_Y<<" "<<MIN_Z<<" "<<MAX_Z<<endl;
-      cout<<"loop2 to set model information"<<endl;
-      
-      for ( int i=0; i<nlocal; ++i ){
-        if ( mask[i] & groupbit ){
-          K.model.atomGID.push_back(atom->tag[i]);
-          K.model.atomCoord.push_back({x[i][0],x[i][1],x[i][2]});
-          if (x[i][0]>= MIN_X+minX && x[i][0] <= MAX_X-maxX &&
-              x[i][1]>= MIN_Y+minY && x[i][1] <= MAX_Y-maxY &&
-              x[i][2]>= MIN_Z+minZ && x[i][2] <= MAX_Z-maxZ){
-              if (mode==0) K.model.atomVirtual.push_back(j);
-              else if(mode==1) K.model.atomReal.push_back(j);
-          } else {
-            if (mode==0) K.model.atomReal.push_back(j);
-            else if(mode==1) K.model.atomVirtual.push_back(j);
-          }
-          ++j;
+        else{
+          if (mode==0) K.model.atomReal.push_back(j);
+          else if(mode==1) K.model.atomVirtual.push_back(j);
         }
+        ++j;
       }
     }
 
-    else if(simType=="group"){
-      for ( int i=0; i<nlocal; ++i ){
-        if ( mask[i] & groupbit ){
-          K.model.atomGID.push_back(atom->tag[i]);
-          K.model.atomCoord.push_back({x[i][0],x[i][1],x[i][2]});
-          if(mask[i] & Vgroupbit){
-            if (mode==0) K.model.atomVirtual.push_back(j);
-            else if(mode==1) K.model.atomReal.push_back(j);
-          }
-          else{
-            if (mode==0) K.model.atomReal.push_back(j);
-            else if(mode==1) K.model.atomVirtual.push_back(j);
-          }
-          ++j;
-        }
-      }
-    }
-
-    K.bondNeighborIdendifier();
-    cout<<"bonds have been identified"<<endl;
-    K.angleNeighborIdendifier();
-    
+    K.bondIdendifier();
+    K.angleIdendifier();
+    cout<<"bonds and angles have been identified"<<endl;
+    K.printAngles();
     pr.setZero(K.model.atomR2v.size()*3,1);
     pv.setZero(K.model.atomV2r.size()*3,1);
     pv_all.setZero(K.model.atomVirtual.size()*3,1);
@@ -385,16 +354,16 @@ FixTransientResponseOMP::final_integrate()
     }
   }
 
-  if(int(t/update->dt)%100==0){
-    cout << "\tNVE for real atom        : " << 1.* t_nve/CLOCKS_PER_SEC << endl;
-    cout << "\tcalcuation of w          : " << 1.* K.t_w/CLOCKS_PER_SEC << endl;
-    cout << "\tcalcuation of XV, X'DVR  : " << 1.* K.t_calK/CLOCKS_PER_SEC << endl;
-    cout << "\tcalculateKernelMatrix(t) : " << 1.* t_KF/CLOCKS_PER_SEC << endl;
-    cout << "\tcollecting Kernel        : " << 1.* t_add/CLOCKS_PER_SEC << endl;
-    cout << "\ttotal time               : " << 1.* t_all/CLOCKS_PER_SEC << endl;
-    cout << "\tconvolution              : " << 1.* t_conv/CLOCKS_PER_SEC << endl;
-    cout << "\tall but conv             : " << 1.* (t_all-t_conv)/CLOCKS_PER_SEC << endl;
-  }
+  // if(int(t/update->dt)%100==0){
+  //   cout << "\tNVE for real atom        : " << 1.* t_nve/CLOCKS_PER_SEC << endl;
+  //   cout << "\tcalcuation of w          : " << 1.* K.t_w/CLOCKS_PER_SEC << endl;
+  //   cout << "\tcalcuation of XV, X'DVR  : " << 1.* K.t_calK/CLOCKS_PER_SEC << endl;
+  //   cout << "\tcalculateKernelMatrix(t) : " << 1.* t_KF/CLOCKS_PER_SEC << endl;
+  //   cout << "\tcollecting Kernel        : " << 1.* t_add/CLOCKS_PER_SEC << endl;
+  //   cout << "\ttotal time               : " << 1.* t_all/CLOCKS_PER_SEC << endl;
+  //   cout << "\tconvolution              : " << 1.* t_conv/CLOCKS_PER_SEC << endl;
+  //   cout << "\tall but conv             : " << 1.* (t_all-t_conv)/CLOCKS_PER_SEC << endl;
+  // }
 
 }
 }

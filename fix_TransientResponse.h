@@ -7,21 +7,14 @@ FixStyle(TransientResponse, FixTransientResponse)
 #ifndef FIX_TRANS_RESPONSE
 #define FIX_TRANS_RESPONSE
 
-#include <vector>
-#include <cstdlib>
-#include <iterator>
-#include <algorithm>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <ctime>
 #include "fix.h"
 #include "fix_nve.h"
 #include "atom.h"
 #include "force.h"
+#include <vector>
 #include "KernelMatrix.h"
-#include "DynamicalCtrlSystem.h"
+#include "AtomInfo.h"
+#include <cstdlib>
 #include "lattice.h"
 #include "neighbor.h"
 #include "atom_vec.h"
@@ -30,12 +23,19 @@ FixStyle(TransientResponse, FixTransientResponse)
 #include "force.h"
 #include "update.h"
 #include "bond.h"
-#include "pair.h"
 #include "atom.h"
 #include "molecule.h"
 #include "memory.h"
 #include "verlet.h"
 #include "group.h"
+#include <unordered_map>
+#include <iterator>
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <string>
+#include <memory>
+#include <ctime>
 
 
 namespace LAMMPS_NS {
@@ -48,21 +48,19 @@ public:
 	// virtual void initial_integrate(int);
 	// virtual void final_integrate();
 	// virtual void computeForce();
-	// void pre_force(int);
-	// void post_force(int);		
+	//void pre_force(int);
+	//void post_force(int);		
 	
 protected:
 	void recount_topology();
-	int iarg=8;
+	//int iarg;
 	double test;
+	double angle_constant,angle;
 	bool equi_initialized=false,zero_initialized=false;
-	double minX,maxX,minY,maxY,minZ,maxZ;
 	int Vgroupbit;
 	double k_mass=1.;
-	double angle=0.;
 	KernelMatrix K;
 	double t=0,tc=10;
-	std::string simType;
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	Eigen::MatrixXd pv_all;

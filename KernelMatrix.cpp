@@ -3,68 +3,81 @@
 using namespace Eigen;
 using namespace std;
 
-KernelMatrix::KernelMatrix(const DynamicalCtrlSystem& model):model(model){
+KernelMatrix::KernelMatrix(const VRAtomInfo& model):model(model){
   gdof = model.atomGID.size()*3;
   vdof = model.atomVirtual.size()*3;
   rdof = model.atomReal.size()*3;
 }
 
-void KernelMatrix::setK_mass(double k_mass){
-  this->k_mass=k_mass;
+void KernelMatrix::setK_mass(double k_m){
+  k_mass=k_m;
 }
-
-void KernelMatrix::setAngle(double angle){
-  this->angle=angle;
+void KernelMatrix::setAngle(double ang){
+  angle=ang;
 }
-
 
 double KernelMatrix::getK_mass(){
   return k_mass;
 }
-double KernelMatrix::length3D(vector<double> p1, vector<double> p2){
-  if(p1.size() != 3 || p2.size() != 3){
-    cout<<"Error: position must have 3 dimension"<<endl;
-    return 0.;
-    }
-  else
-    return sqrt((p1[0]-p2[0])*(p1[0]-p2[0])+(p1[1]-p2[1])*(p1[1]-p2[1])+(p1[2]-p2[2])*(p1[2]-p2[2]));
-}
-Eigen::MatrixXd KernelMatrix::localKe(vector<double> p1, vector<double> p2){
-  Matrix2d k;
-  k<<1,-1,-1,1;
-  double bondLength = length3D(p1, p2);
-  double cx=(p2[0]-p1[0])/bondLength;
-  double cy=(p2[1]-p1[1])/bondLength;
-  double cz=(p2[2]-p1[2])/bondLength;
-  MatrixXd J1(2,6);
-  MatrixXd J2(2,6);
-  MatrixXd J3(2,6);
-  J1<<cx,cy,cz,0.,0.,0.,0.,0.,0.,cx,cy,cz;
-  // J2<<cy,cz,cx,0.,0.,0.,0.,0.,0.,cy,cz,cx;
-  // J3<<cz,cx,cy,0.,0.,0.,0.,0.,0.,cz,cx,cy;
-  // MatrixXd ke = J1.transpose() * k * J1 +
-  // J2.transpose() * k * J2 +
-  // J3.transpose() * k * J3;
-  MatrixXd ke=J1.transpose() * k * J1;
-  return ke*k_mass;
+
+
+vector<double> KernelMatrix::vectorBy2Points(vector<double> p1, vector<double> p2){
+    vector<double> v12 = {p1[0]-p2[0],p1[1]-p2[1],p1[2]-p2[2]};
+    return v12;
 }
 
-void KernelMatrix::bondNeighborIdendifier(){
+
+double KernelMatrix::lengthOfVector(vector<double> v){
+    return sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+}
+
+double KernelMatrix::dotBy2Vectors(vector<double> v1, vector<double> v2){
+    return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
+}
+
+double KernelMatrix::cosBy2Vectors(vector<double> v1, vector<double> v2){
+    return dotBy2Vectors(v1,v2)/lengthOfVector(v1)/lengthOfVector(v2);
+}
+
+vector<int> KernelMatrix::bondOrAtom2MatrixDof(const vector<int> atomList){
+    vector<int> dof;
+    for (int i=0;i<atomList.size();++i)
+        for (int ii=0;ii<3;++ii)
+            dof.push_back(atomList[i]*3+ii);
+    return dof;
+}
+
+vector<int> KernelMatrix::bondOrAtom2MatrixDof(const pair<int,int> atomList){
+  vector<int> dof;
+  for (int ii=0;ii<3;++ii)
+    dof.push_back(atomList.first*3+ii);
+  for (int ii=0;ii<3;++ii)
+    dof.push_back(atomList.second*3+ii);
+  return dof;
+}
+
+vector<int> KernelMatrix::bondOrAtom2MatrixDof(const int atomID){
+    vector<int> dof;
+    for (int ii=0;ii<3;++ii)
+      dof.push_back(atomID*3+ii);
+    return dof;
+}
+
+void KernelMatrix::bondIdendifier(){
   double L = 10000.;
   for (int i = 0 ;i<model.atomGID.size();++i){
     for (int j = 0 ;j<model.atomGID.size();++j){
       if (i!=j){
-        double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
+        double temp = lengthOfVector(vectorBy2Points(model.atomCoord[i],model.atomCoord[j]));
         if (temp<L) L = temp;
       }
     }
   }
-
   cout<<"bond Length: "<<L<<endl;
   for (int i = 0 ;i<model.atomGID.size();++i){
     for (int j = 0 ;j<model.atomGID.size();++j){        
       if(i!=j){
-        double temp = length3D(model.atomCoord[i],model.atomCoord[j]);
+        double temp = lengthOfVector(vectorBy2Points(model.atomCoord[i],model.atomCoord[j]));
         if (abs(temp-L)<1e-1){
           bonds.insert( { i, j } );
           std::vector<int> tempV={j,i};
@@ -77,6 +90,7 @@ void KernelMatrix::bondNeighborIdendifier(){
       }
     }
   }
+
   set<int> tempV,tempR;
   cout<<"Identify "<<bonds.size()<<" bonds."<<endl;
   cout<<"Identify "<<pairs.size()<<" pairs."<<endl;
@@ -101,47 +115,45 @@ void KernelMatrix::bondNeighborIdendifier(){
   cout<<endl;
 }
 
-void KernelMatrix::angleNeighborIdendifier(){
-  if (angle==0) return 0;
-  for (int o = 0 ;o<model.atomGID.size();++o){
-    pair<multimap<int,int>::iterator, 
-    multimap<int,int>::iterator> allBonded = bonds.equal_range(o);
-    for (auto a = allBonded.first; a != allBonded.second; ++a){
-      for (auto b = a + 1; b != allBonded.second; ++b){
-        int A = *a, B = *b;
-        double OA = length3D(model.atomCoord[o],model.atomCoord[A]);
-        double OB = length3D(model.atomCoord[o],model.atomCoord[B]);
-        double AB = length3D(model.atomCoord[A],model.atomCoord[B]);
-        if ( abs( AB*AB - OA*OA + OB*OB - 2*OA*OB*cos(angle)) < 1e-6) angles.insert( { A, o, B} );
+void KernelMatrix::angleIdendifier(){
+  if (angle!=0){
+    for (int o = 0 ; o < model.atomGID.size(); ++o){
+      pair<multimap<int,int>::iterator, multimap<int,int>::iterator> allBonded = bonds.equal_range(o);
+      for (auto a = allBonded.first; a != allBonded.second; ++a){
+        for (auto b = a; b != allBonded.second; ++b){
+          if(a == b) continue;
+          int A = a->second, B = b->second;
+          double OA = lengthOfVector(vectorBy2Points(model.atomCoord[o],model.atomCoord[A]));
+          double OB = lengthOfVector(vectorBy2Points(model.atomCoord[o],model.atomCoord[B]));
+          double AB = lengthOfVector(vectorBy2Points(model.atomCoord[A],model.atomCoord[B]));
+          //cout<<" { "<< AB<<", "<< OA<<", "<< OB<<" } "<< acos( (OA*OA + OB*OB - AB*AB)/2/OA/OB )*180/3.14159265;
+          if ( abs( acos( (OA*OA + OB*OB - AB*AB)/2/OA/OB )*180/3.14159265 - 60) < 1e-4 )
+            angles.push_back(make_tuple(A, o, B));
+        }
       }
     }
   }
 }
 
-vector<int> KernelMatrix::bondOrAtom2MatrixDof(const vector<int> atomList){
-    vector<int> dof;
-    for (int i=0;i<atomList.size();++i)
-        for (int ii=0;ii<3;++ii)
-            dof.push_back(atomList[i]*3+ii);
-    return dof;
+Eigen::MatrixXd KernelMatrix::localKe(vector<double> p1, vector<double> p2){
+  Matrix2d k;
+  k<<1,-1,-1,1;
+  double bondLength = lengthOfVector(vectorBy2Points(p1, p2));
+  double cx=(p2[0]-p1[0])/bondLength;
+  double cy=(p2[1]-p1[1])/bondLength;
+  double cz=(p2[2]-p1[2])/bondLength;
+  MatrixXd J1(2,6);
+  MatrixXd J2(2,6);
+  MatrixXd J3(2,6);
+  J1<<cx,cy,cz,0.,0.,0.,0.,0.,0.,cx,cy,cz;
+  // J2<<cy,cz,cx,0.,0.,0.,0.,0.,0.,cy,cz,cx;
+  // J3<<cz,cx,cy,0.,0.,0.,0.,0.,0.,cz,cx,cy;
+  // MatrixXd ke = J1.transpose() * k * J1 +
+  // J2.transpose() * k * J2 +
+  // J3.transpose() * k * J3;
+  MatrixXd ke=J1.transpose() * k * J1;
+  return ke*k_mass;
 }
-
-vector<int> KernelMatrix::bondOrAtom2MatrixDof(const pair<int,int> atomList){
-  vector<int> dof;
-  for (int ii=0;ii<3;++ii)
-    dof.push_back(atomList.first*3+ii);
-  for (int ii=0;ii<3;++ii)
-    dof.push_back(atomList.second*3+ii);
-  return dof;
-}
-
-vector<int> KernelMatrix::bondOrAtom2MatrixDof(const int atomID){
-    vector<int> dof;
-    for (int ii=0;ii<3;++ii)
-    	dof.push_back(atomID*3+ii);
-    return dof;
-}
-
 
 void KernelMatrix::calculateEigen(){
   gdof = model.atomGID.size()*3;
@@ -173,16 +185,15 @@ void KernelMatrix::calculateEigen(){
     }
   }
 
-
+  
   cout<<"D: "<<gdof<<"x"<<D.outerSize()<<endl;
   Vdof=bondOrAtom2MatrixDof(model.atomVirtual);
   Rdof=bondOrAtom2MatrixDof(model.atomReal);
   V2Rdof=bondOrAtom2MatrixDof(model.atomV2r);
   R2Vdof=bondOrAtom2MatrixDof(model.atomR2v);
   int i=0,j=0,k=0;
-  for (const auto& eRow : Vdof
-
-      for (const auto& eCol : Vdof){
+  for (const auto& eRow : Vdof){
+    for (const auto& eCol : Vdof){
       DV(i,j)=D.coeff(eRow,eCol);
       ++j;
     }
@@ -233,6 +244,10 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t){
       complex<double> wi = sqrt( complex<double>(uv0(i,0)*uv0(i,0)/4 - d(i,i) +vv0(i,0)));
       complex<double> sinH = sinh(t * wi);
       sinHF.insert(i,i)=exp(uv0(i,0)*t/2)*real(sinH/wi);
+            //no uv0
+      // complex<double> wi = sqrt( complex<double>(- d(i,i) ));
+      // complex<double> sinH = sinh(t * wi);
+      // sinHF.insert(i,i)=real(sinH/wi);
     }
   }
   t_w+=clock()-Ttemp;
@@ -272,6 +287,14 @@ void KernelMatrix::set0state(MatrixXd uv0, MatrixXd vv0){
   this->uv0=uv0;
   this->vv0=vv0;
 
+}
+void KernelMatrix::printAngles(){
+  cout<<"Angles: (A, o, B)"<<endl;
+  for (auto i = angles.begin(); i != angles.end(); ++i)
+  {
+    cout<<"{ "<< get<0>(*i)<<", "<< get<1>(*i)<<", "<< get<2>(*i)<<" }  ";
+  }
+  cout<<endl;
 }
 
  

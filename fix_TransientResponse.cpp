@@ -5,42 +5,29 @@ using namespace Eigen;
 using namespace std;
 namespace LAMMPS_NS{
 
-//       0        1          2                 3                     4            5               6           7
-//fix fix_ID ALLgroup_id TransientResponse  spring_constant/mass   angle        tcutoff  TwoWay/Absorbing  group/length
-//group        8   
-//          VgroupID
-//custom       8    9   10   11   12  13
-//          minX maxX minY maxY minZ maxZ
+//       0        1          2                    3                   4             5         6               7             8 
+//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tcutoff      (bool)VRinverse  VgroupID
+//    9        
+//  Nthreads
 
 FixTransientResponse::FixTransientResponse (
         class LAMMPS *lmp,
         int narg,
         char **arg
 ) : FixNVE(lmp, narg, arg),
-	k_mass(atof(arg[3])),angle(atof(arg[4])),tc(atof((arg[5]))),mode(atof(arg[6])),simType(arg[7])
+	k_mass(atof(arg[3])),angle_constant(atof(arg[4])),angle(atof(arg[5])),tc(atof(arg[6])),mode(atof(arg[7]))
 {
-  if (mode==0) cout<<"Simulation Mode: Normal"<<endl;
-  else if (mode==1) cout<<"Simulation Mode: Reverse"<<endl;
-  else error->all(FLERR, "Illegal fix TransientResponseOMP mode");
+  if (!mode) cout<<"Simulation Mode: Two Way"<<endl;
+  else cout<<"Simulation Mode: Absorbing"<<endl;
+
   nevery = 1;
   time_integrate = 1;
   K.setK_mass(k_mass);
-  K.setAngle(angle);
   std::cout << "k/m = "<<K.getK_mass()<<std::endl;
-  std::cout << "dt = "<<update->dt << std::endl;
-  if (simType=="group"){
-    int Vgroup = group->find(arg[iarg++]);
-    if (Vgroup == -1) error->all(FLERR,"Could not find Virtual group ID");
-    Vgroupbit = group->bitmask[Vgroup];
-  }
-  else if (simType=="custom"){
-    minX=atof(arg[iarg++]);
-    maxX=atof(arg[iarg++]);
-    minY=atof(arg[iarg++]);
-    maxY=atof(arg[iarg++]);
-    minZ=atof(arg[iarg++]);
-    maxZ=atof(arg[iarg++]);
-  }
+  std::cout << "dt = "<< update->dt << std::endl;
+  int Vgroup = group->find(arg[8]);
+  if (Vgroup == -1) error->all(FLERR,"Could not find Virtual group ID");
+  Vgroupbit = group->bitmask[Vgroup];
 }
 
 //---------------------------------------------------------------------------//
