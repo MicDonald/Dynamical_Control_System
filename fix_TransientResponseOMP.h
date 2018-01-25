@@ -14,9 +14,9 @@ FixStyle(TransientResponseOMP, FixTransientResponseOMP)
 #include "fix_TransientResponse.h"
 namespace LAMMPS_NS {
 
-class FixTransientResponseOMP: public FixTransientResponse{
-public:	
-	FixTransientResponseOMP(class LAMMPS *, int, char **);	
+class FixTransientResponseOMP: public FixTransientResponse {
+public:
+	FixTransientResponseOMP(class LAMMPS *, int, char **);
 	void init();
 	void initial_integrate(int);
 	void final_integrate();

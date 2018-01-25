@@ -3,30 +3,30 @@
 
 using namespace Eigen;
 using namespace std;
-namespace LAMMPS_NS{
+namespace LAMMPS_NS {
 
-//       0        1          2                    3                   4             5         6          7             8 
+//       0        1          2                    3                   4             5         6          7             8
 //fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tcutoff     mode        VgroupID
-//    9        
+//    9
 //  Nthreads
 
 FixTransientResponse::FixTransientResponse (
-        class LAMMPS *lmp,
-        int narg,
-        char **arg
+  class LAMMPS *lmp,
+  int narg,
+  char **arg
 ) : FixNVE(lmp, narg, arg),
-	k_mass(atof(arg[3])),angle_constant(atof(arg[4])),angle(atof(arg[5])),tc(atof(arg[6])),mode(*arg[7])
+  k_mass(atof(arg[3])), angle_constant(atof(arg[4])), angle(atof(arg[5])), tc(atof(arg[6])), mode(*arg[7])
 {
-  if (mode == 'u') cout<<"Mode: Displacement" <<endl;
-  else cout<<"Mode: Velocity"<<endl;
+  if (mode == 'u') cout << "Mode: Displacement" << endl;
+  else cout << "Mode: Velocity" << endl;
 
   nevery = 1;
   time_integrate = 1;
   K.setK_mass(k_mass);
-  std::cout << "k/m = "<<K.getK_mass()<<std::endl;
-  std::cout << "dt = "<< update->dt << std::endl;
+  std::cout << "k/m = " << K.getK_mass() << std::endl;
+  std::cout << "dt = " << update->dt << std::endl;
   int Vgroup = group->find(arg[8]);
-  if (Vgroup == -1) error->all(FLERR,"Could not find Virtual group ID");
+  if (Vgroup == -1) error->all(FLERR, "Could not find Virtual group ID");
   Vgroupbit = group->bitmask[Vgroup];
 }
 
@@ -38,15 +38,15 @@ FixTransientResponse::setmask ()
   using namespace FixConst;
   int mask = 0;
   mask |= INITIAL_INTEGRATE;
-//	mask |= PRE_FORCE;
-//	mask |= POST_FORCE;
-	mask |= FINAL_INTEGRATE;
+//  mask |= PRE_FORCE;
+//  mask |= POST_FORCE;
+  mask |= FINAL_INTEGRATE;
   return mask;
 }
 
 
 void
-FixTransientResponse::recount_topology(){
+FixTransientResponse::recount_topology() {
   bigint nbonds = 0;
   bigint nangles = 0;
   bigint ndihedrals = 0;
@@ -72,7 +72,7 @@ FixTransientResponse::recount_topology(){
     int *molatom = atom->molatom;
     int nlocal = atom->nlocal;
 
-    int imol,iatom;
+    int imol, iatom;
 
     for (int i = 0; i < nlocal; i++) {
       imol = molindex[i];
@@ -85,19 +85,19 @@ FixTransientResponse::recount_topology(){
   }
 
   if (atom->avec->bonds_allow) {
-    MPI_Allreduce(&nbonds,&atom->nbonds,1,MPI_LMP_BIGINT,MPI_SUM,world);
+    MPI_Allreduce(&nbonds, &atom->nbonds, 1, MPI_LMP_BIGINT, MPI_SUM, world);
     if (!force->newton_bond) atom->nbonds /= 2;
   }
   if (atom->avec->angles_allow) {
-    MPI_Allreduce(&nangles,&atom->nangles,1,MPI_LMP_BIGINT,MPI_SUM,world);
+    MPI_Allreduce(&nangles, &atom->nangles, 1, MPI_LMP_BIGINT, MPI_SUM, world);
     if (!force->newton_bond) atom->nangles /= 3;
   }
   if (atom->avec->dihedrals_allow) {
-    MPI_Allreduce(&ndihedrals,&atom->ndihedrals,1,MPI_LMP_BIGINT,MPI_SUM,world);
+    MPI_Allreduce(&ndihedrals, &atom->ndihedrals, 1, MPI_LMP_BIGINT, MPI_SUM, world);
     if (!force->newton_bond) atom->ndihedrals /= 4;
   }
   if (atom->avec->impropers_allow) {
-    MPI_Allreduce(&nimpropers,&atom->nimpropers,1,MPI_LMP_BIGINT,MPI_SUM,world);
+    MPI_Allreduce(&nimpropers, &atom->nimpropers, 1, MPI_LMP_BIGINT, MPI_SUM, world);
     if (!force->newton_bond) atom->nimpropers /= 4;
   }
 }

@@ -40,7 +40,7 @@ FixStyle(TransientResponse, FixTransientResponse)
 
 namespace LAMMPS_NS {
 
-class FixTransientResponse: public FixNVE{
+class FixTransientResponse: public FixNVE {
 public:
 	FixTransientResponse(class LAMMPS *, int, char **);
 	int setmask();
@@ -49,26 +49,26 @@ public:
 	// virtual void final_integrate();
 	// virtual void computeForce();
 	//void pre_force(int);
-	//void post_force(int);		
-	
+	//void post_force(int);
+
 protected:
 	void recount_topology();
 	//int iarg;
 	double test;
-	double angle_constant,angle;
-	bool equi_initialized=false,zero_initialized=false;
+	double angle_constant, angle;
+	bool equi_initialized = false, zero_initialized = false;
 	int Vgroupbit;
-	double k_mass=1.;
+	double k_mass = 1.;
 	KernelMatrix K;
-	double t=0,tc=10;
+	double t = 0, tc = 10;
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	Eigen::MatrixXd pv_all;
-	std::vector<Eigen::MatrixXd> ur;
+	std::vector<Eigen::MatrixXd> ur, ar;
 	//std::vector<Eigen::SparseMatrix<double>> KM;
 	std::vector<Eigen::MatrixXd> KM;
 	char mode;
-	clock_t t_all=0,t_conv=0,t_nve=0,t_KF=0,t_add=0;
+	clock_t t_all = 0, t_conv = 0, t_nve = 0, t_KF = 0, t_add = 0;
 };
 
 }
