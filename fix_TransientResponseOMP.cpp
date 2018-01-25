@@ -39,14 +39,11 @@ FixTransientResponseOMP::FixTransientResponseOMP (
       if ( mask[i] & groupbit ){
         K.model.atomGID.push_back(atom->tag[i]);
         K.model.atomCoord.push_back({x[i][0],x[i][1],x[i][2]});
-        if(mask[i] & Vgroupbit){
-          if (mode==0) K.model.atomVirtual.push_back(j);
-          else if(mode==1) K.model.atomReal.push_back(j);
-        }
-        else{
-          if (mode==0) K.model.atomReal.push_back(j);
-          else if(mode==1) K.model.atomVirtual.push_back(j);
-        }
+        if(mask[i] & Vgroupbit)
+          K.model.atomVirtual.push_back(j);
+        else
+          K.model.atomReal.push_back(j);
+
         ++j;
       }
     }
@@ -201,18 +198,17 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 	int *type = atom->type;
   double dtfm;
   
-  MatrixXd uv,tempPr,tempVr;
+  MatrixXd uv,tempPr;
   tempPr.setZero(K.model.atomR2v.size()*3,1);
-  tempVr.setZero(K.model.atomR2v.size()*3,1);
   uv.setZero(K.model.atomV2r.size()*3,1);
-  t+=update->dt;
   
-  clock_t t_all_temp=clock();
+  
+  clock_t t_all_temp = clock();
 //Normal NVE for real atom
 #pragma omp single
 {
-  dtv = update->dt;
-  dtf = 0.5 * update->dt * force->ftm2v;
+  // dtv = update->dt;
+  // dtf = 0.5 * update->dt * force->ftm2v;
   if (rmass) {
     //for (const auto& e :K.model.atomGID){
     for (const auto& e :K.model.atomReal){
@@ -257,12 +253,28 @@ FixTransientResponseOMP::initial_integrate (int vflag)
     vector<int>::iterator iter = find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
     int jr = distance( K.model.atomR2v.begin(), iter );
     // cout<<"gid: "<<gid<<" i: "<<i<<" iter: "<<*iter<<" jr: "<<jr<<endl;
-    tempPr(K.bondOrAtom2MatrixDof(jr)[0],0)=x[i][0];
-    tempPr(K.bondOrAtom2MatrixDof(jr)[1],0)=x[i][1];
-    tempPr(K.bondOrAtom2MatrixDof(jr)[2],0)=x[i][2];
+    if (mode == 'u')
+    {
+      tempPr(K.bondOrAtom2MatrixDof(jr)[0],0)=x[i][0];
+      tempPr(K.bondOrAtom2MatrixDof(jr)[1],0)=x[i][1];
+      tempPr(K.bondOrAtom2MatrixDof(jr)[2],0)=x[i][2];
+    }
+    else
+    {
+      tempPr(K.bondOrAtom2MatrixDof(jr)[0],0)=v[i][0];
+      tempPr(K.bondOrAtom2MatrixDof(jr)[1],0)=v[i][1];
+      tempPr(K.bondOrAtom2MatrixDof(jr)[2],0)=v[i][2];
+    }
   }
-  MatrixXd tempUr=tempPr-pr;
-  ur.push_back(tempUr);
+  if (mode == 'u')
+  {
+    MatrixXd tempUr=tempPr-pr;
+    ur.push_back(tempUr);
+  }
+  else
+  {
+    ur.push_back(tempPr);
+  }
 
   clock_t t_temp_KF=clock();
   auto KF=K.calculateKernelMatrix(t);
@@ -280,14 +292,9 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 #pragma omp parallel
 {
 #pragma omp for
-  for (int i=t/update->dt;i>=1;--i){
-    int ii = t/update->dt-i;
-    // cout <<"i: " <<i<<endl;
-    // cout <<"t: " <<t<<endl;
-    // cout <<"I: " <<t/update->dt << endl;
-    MatrixXd tempUv=update->dt*KM[i-1]*ur[ii];
-    // double ti = i*update->dt;
-    // MatrixXd tempUv=update->dt*K.calculateKernelMatrix(ti)*ur[ii];
+  for (int i = t / dtv; i > 0; --i){
+    int ii = t / dtv - i;
+    MatrixXd tempUv = dtv * KM[i] * ur[ii];
     #pragma omp critical
     {
       uv+=tempUv;
@@ -304,13 +311,26 @@ FixTransientResponseOMP::initial_integrate (int vflag)
     int i = atom->map(gid);
     vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
     int jv = distance( K.model.atomV2r.begin(), iter );
-    x[i][0]=pv(K.bondOrAtom2MatrixDof(jv)[0],0)+uv(K.bondOrAtom2MatrixDof(jv)[0],0);
-    x[i][1]=pv(K.bondOrAtom2MatrixDof(jv)[1],0)+uv(K.bondOrAtom2MatrixDof(jv)[1],0);
-    x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
+    if (mode == 'u')
+    {
+      x[i][0]=pv(K.bondOrAtom2MatrixDof(jv)[0],0)+uv(K.bondOrAtom2MatrixDof(jv)[0],0);
+      x[i][1]=pv(K.bondOrAtom2MatrixDof(jv)[1],0)+uv(K.bondOrAtom2MatrixDof(jv)[1],0);
+      x[i][2]=pv(K.bondOrAtom2MatrixDof(jv)[2],0)+uv(K.bondOrAtom2MatrixDof(jv)[2],0);
+    }
+    else
+    {
+      v[i][0]=uv(K.bondOrAtom2MatrixDof(jv)[0],0);
+      v[i][1]=uv(K.bondOrAtom2MatrixDof(jv)[1],0);
+      v[i][2]=uv(K.bondOrAtom2MatrixDof(jv)[2],0);
+      x[i][0] += dtv * v[i][0];
+      x[i][1] += dtv * v[i][1];
+      x[i][2] += dtv * v[i][2];
+    }
   }
-  t_all+=clock()-t_all_temp;
 
+  t_all+=clock()-t_all_temp;
 }
+  t += dtv;
 }
 //---------------------------------------------------------------------------//
 
@@ -328,8 +348,8 @@ FixTransientResponseOMP::final_integrate()
 
 #pragma omp single
 {
-  dtv = update->dt;
-  dtf = 0.5 * update->dt * force->ftm2v;
+  // dtv = update->dt;
+  // dtf = 0.5 * update->dt * force->ftm2v;
   double dtfm;
 
   if (rmass) {
@@ -350,7 +370,6 @@ FixTransientResponseOMP::final_integrate()
       v[i][0] += dtfm * f[i][0];
       v[i][1] += dtfm * f[i][1];
       v[i][2] += dtfm * f[i][2];
-
     }
   }
 

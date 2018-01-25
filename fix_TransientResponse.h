@@ -67,7 +67,7 @@ protected:
 	std::vector<Eigen::MatrixXd> ur;
 	//std::vector<Eigen::SparseMatrix<double>> KM;
 	std::vector<Eigen::MatrixXd> KM;
-	int mode;
+	char mode;
 	clock_t t_all=0,t_conv=0,t_nve=0,t_KF=0,t_add=0;
 };
 
