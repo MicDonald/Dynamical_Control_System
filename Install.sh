@@ -1,43 +1,39 @@
-# mode 0 = uninstall
-# mode 1 = install 
+# Install/unInstall package files in LAMMPS
+# mode = 0/1/2 for uninstall/install/update
 
-# type 0 = serial
-# type 1 = ompi
-# type 2 = mpi
+# this is default Install.sh for all packages
+# if package has an auxiliary library or a file with a dependency,
+# then package dir has its own customized Install.sh
 
-mode=1
-runtype=1
+mode=$1
 
-if (! test -e ../Makefile.package) then
-  cp ../Makefile.package.empty ../Makefile.package
-fi
-rm ../fix_TransientResponse*
-rm ../KernelMatrix*
-rm ../AtomInfo*
-rm ../DynamicalCtrlSystem*
-#sed -i -e 's/-I..\/USER-DYNAMICAL_CTRLSYSTEM //' ../Makefile.package
-#sed -i -e 's/-L..\/USER-DYNAMICAL_CTRLSYSTEM //' ../Makefile.package
-#sed -i -e 's/-lDynamicalCtrlSystem //' ../Makefile.package
+# enforce using portable C locale
+LC_ALL=C
+export LC_ALL
 
-if (test $mode = 1) then
-  #sed -i -e 's/^PKG_INC =[ \t]*/&-I..\/USER-DYNAMICAL_CTRLSYSTEM /' ../Makefile.package
-  #sed -i -e 's/^PKG_PATH =[ \t]*/&-L..\/USER-DYNAMICAL_CTRLSYSTEM /' ../Makefile.package
-  #sed -i -e 's/^PKG_LIB =[ \t]*/&-lDynamicalCtrlSystem /' ../Makefile.package
+# arg1 = file, arg2 = file it depends on
 
-  #if (test $runtype = 2) then
-   #sed -i -e 's/^PKG_INC =[ \t]*/&-I..\/opt/intel/Compiler/11.0/074/mkl/include /' ../Makefile.package
-   #make MPI_LIB
-   # cd ..
-   # make mpi -j 8
-   # cd USER-VRTRANSITION
-  if (test $runtype = 1) then
-    cp *.cpp ..
-    cp *.h ..
-    cp -ru Eigen ..
-    cd ..
-    make omp -j 8
-    cd _DCS
-    #make OpenMP_LIB
+action () {
+  if (test $mode = 0) then
+    rm -f ../$1
+  elif (! cmp -s $1 ../$1) then
+    if (test -z "$2" || test -e ../$2) then
+      cp $1 ..
+      cp Eigen -r ..
+      if (test $mode = 2) then
+        echo "  updating src/$1"
+      fi
+    fi
+  elif (test -n "$2") then
+    if (test ! -e ../$2) then
+      rm -f ../$1
+      rm -f ../Eigen
+    fi
   fi
-fi
+}
 
+# all package files with no dependencies
+
+for file in *.cpp *.h; do
+  test -f ${file} && action $file
+done

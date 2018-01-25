@@ -7,9 +7,6 @@ FixStyle(TransientResponseOMP, FixTransientResponseOMP)
 #ifndef FIX_TRANS_RESPONSEOMP
 #define FIX_TRANS_RESPONSEOMP
 
-
-
-
 #include "omp.h"
 #include "fix_TransientResponse.h"
 namespace LAMMPS_NS {
