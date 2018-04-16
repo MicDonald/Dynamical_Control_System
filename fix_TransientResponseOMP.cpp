@@ -5,7 +5,7 @@ using namespace std;
 namespace LAMMPS_NS {
 
 //       0        1          2                    3                   4             5         6               7             8
-//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tcutoff      (bool)VRinverse  VgroupID
+//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tshift      (bool)VRinverse  VgroupID
 //    9
 //  Nthreads
 
@@ -190,10 +190,6 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 	int *type = atom->type;
 	double dtfm;
 
-	MatrixXd uv, tempPr;
-	tempPr.setZero(K.model.atomR2v.size() * 3, 1);
-	uv.setZero(K.model.atomV2r.size() * 3, 1);
-
 	clock_t t_all_temp = clock();
 	//Normal NVE for real atom
 	#pragma omp single
@@ -217,6 +213,9 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 				int gid = K.model.atomGID[e];
 				//int gid = e;
 				int i = atom->map(gid);
+				vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
+				int jv = distance( K.model.atomV2r.begin(), iter );
+
 				dtfm = dtf / rmass[i];
 				v[i][0] += dtfm * f[i][0];
 				v[i][1] += dtfm * f[i][1];
@@ -245,6 +244,9 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 				int gid = K.model.atomGID[e];
 				// int gid = e;
 				int i = atom->map(gid);
+				vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
+				int jv = distance( K.model.atomV2r.begin(), iter );
+
 				dtfm = dtf / mass[type[i]];
 				v[i][0] += dtfm * f[i][0];
 				v[i][1] += dtfm * f[i][1];
@@ -258,8 +260,10 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 	clock_t Ttemp = clock();
 	t_nve += Ttemp - t_all_temp;
 
-	if (mode == 'u')
-	{
+	if (mode == 'u') {
+		MatrixXd uv, tempPr;
+		tempPr.setZero(K.model.atomR2v.size() * 3, 1);
+		uv.setZero(K.model.atomV2r.size() * 3, 1);
 		#pragma omp single
 		{
 			for (const auto& e : K.model.atomR2v) {
@@ -270,27 +274,30 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 				tempPr(K.bondOrAtom2MatrixDof(jr)[0], 0) = x[i][0];
 				tempPr(K.bondOrAtom2MatrixDof(jr)[1], 0) = x[i][1];
 				tempPr(K.bondOrAtom2MatrixDof(jr)[2], 0) = x[i][2];
-				MatrixXd tempUr = tempPr - pr;
-				ur.push_back(tempUr);
-
 			}
+			MatrixXd tempUr = tempPr - pr;
+			ur.push_back(tempUr);
+			
 			clock_t t_temp_KF = clock();
-			auto KF = K.calculateKernelMatrix(t);
+			auto KF = K.calculateKernelMatrix(t + 0.5 * dtv, false);
+			        // + K.calculateKernelMatrix(t + dtv, false) * 0.5;
 			t_temp_KF = clock() - t_temp_KF;
 
 			clock_t t_temp_add = clock();
 
 			KM.push_back(KF);
+		
 			t_temp_add = clock() - t_temp_add;
 
 			t_KF += t_temp_KF;
 			t_add += t_temp_add;
+		
 		}
 		clock_t t_conv_temp = clock();
 		#pragma omp parallel
 		{
 			#pragma omp for
-			for (int i = t / dtv; i > 0; --i) {
+			for (int i = t / dtv; i > 0; --i) {	
 				int ii = t / dtv - i;
 				MatrixXd tempUv = dtv * KM[i] * ur[ii];
 				#pragma omp critical
@@ -316,7 +323,6 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 			t_all += clock() - t_all_temp;
 		}
 	}
-	t += dtv;
 }
 //---------------------------------------------------------------------------//
 
@@ -332,14 +338,12 @@ FixTransientResponseOMP::final_integrate()
 	double *mass = atom->mass;
 	int *type = atom->type;
 
-	MatrixXd av, tempAr;
-	tempAr.setZero(K.model.atomR2v.size() * 3, 1);
-	av.setZero(K.model.atomV2r.size() * 3, 1);
-
 	clock_t t_all_temp = clock();
 
-	if (mode == 'a')
-	{
+	if (mode == 'a') {
+		MatrixXd av, tempAr;
+		av.setZero(K.model.atomV2r.size() * 3, 1);
+		tempAr.setZero(K.model.atomR2v.size() * 3, 1);
 		#pragma omp single
 		{
 			for (const auto& e : K.model.atomR2v) {
@@ -347,14 +351,15 @@ FixTransientResponseOMP::final_integrate()
 				int i = atom->map(gid);
 				vector<int>::iterator iter = find( K.model.atomR2v.begin(), K.model.atomR2v.end(), e );
 				int jr = distance( K.model.atomR2v.begin(), iter );
-				double m = mass[type[i]];
-				tempAr(K.bondOrAtom2MatrixDof(jr)[0], 0) = f[i][0] / m;
-				tempAr(K.bondOrAtom2MatrixDof(jr)[1], 0) = f[i][1] / m;
-				tempAr(K.bondOrAtom2MatrixDof(jr)[2], 0) = f[i][2] / m;
-				ar.push_back(tempAr);
+				tempAr(K.bondOrAtom2MatrixDof(jr)[0], 0) = f[i][0] / mass[type[i]];
+				tempAr(K.bondOrAtom2MatrixDof(jr)[1], 0) = f[i][1] / mass[type[i]];
+				tempAr(K.bondOrAtom2MatrixDof(jr)[2], 0) = f[i][2] / mass[type[i]];
 			}
+			ar.push_back(tempAr);
+
 			clock_t t_temp_KF = clock();
-			auto KF = K.calculateKernelMatrix(t);
+			auto KF = K.calculateKernelMatrix(t + 0.5 * dtv, false);
+
 			t_temp_KF = clock() - t_temp_KF;
 
 			clock_t t_temp_add = clock();
@@ -369,7 +374,7 @@ FixTransientResponseOMP::final_integrate()
 		#pragma omp parallel
 		{
 			#pragma omp for
-			for (int i = t / dtv; i > 0; --i) {
+			for (int i = t / dtv; i > 0; --i) {	
 				int ii = t / dtv - i;
 				MatrixXd tempAv = dtv * KM[i] * ar[ii];
 				#pragma omp critical
@@ -388,14 +393,15 @@ FixTransientResponseOMP::final_integrate()
 				int i = atom->map(gid);
 				vector<int>::iterator iter = find( K.model.atomV2r.begin(), K.model.atomV2r.end(), e );
 				int jv = distance( K.model.atomV2r.begin(), iter );
-				double m = mass[type[i]];
-				f[i][0] = m * av(K.bondOrAtom2MatrixDof(jv)[0], 0);
-				f[i][1] = m * av(K.bondOrAtom2MatrixDof(jv)[1], 0);
-				f[i][2] = m * av(K.bondOrAtom2MatrixDof(jv)[2], 0);
+				f[i][0] = mass[type[i]] * av(K.bondOrAtom2MatrixDof(jv)[0], 0);
+				f[i][1] = mass[type[i]] * av(K.bondOrAtom2MatrixDof(jv)[1], 0);
+				f[i][2] = mass[type[i]] * av(K.bondOrAtom2MatrixDof(jv)[2], 0);
 			}
-			t_all += clock() - t_all_temp;
+		 t_all += clock() - t_all_temp;
 		}
 	}
+
+
 
 	#pragma omp single
 	{
@@ -439,18 +445,19 @@ FixTransientResponseOMP::final_integrate()
 			}
 		}
 
-		// if(int(t/update->dt)%100==0){
-		//   cout << "\tNVE for real atom        : " << 1.* t_nve/CLOCKS_PER_SEC << endl;
-		//   cout << "\tcalcuation of w          : "ß << 1.* K.t_w/CLOCKS_PER_SEC << endl;
-		//   cout << "\tcalcuation of XV, X'DVR  : " << 1.* K.t_calK/CLOCKS_PER_SEC << endl;
-		//   cout << "\tcalculateKernelMatrix(t) : " << 1.* t_KF/CLOCKS_PER_SEC << endl;
-		//   cout << "\tcollecting Kernel        : " << 1.* t_add/CLOCKS_PER_SEC << endl;
-		//   cout << "\ttotal time               : " << 1.* t_all/CLOCKS_PER_SEC << endl;
-		//   cout << "\tconvolution              : " << 1.* t_conv/CLOCKS_PER_SEC << endl;
-		//   cout << "\tall but conv             : " << 1.* (t_all-t_conv)/CLOCKS_PER_SEC << endl;
-		// }
+		if(t==0){
+		  cout << "\tNVE for real atom        : " << 1.* t_nve/CLOCKS_PER_SEC << endl;
+		  cout << "\tcalcuation of w          : " << 1.* K.t_w/CLOCKS_PER_SEC << endl;
+		  cout << "\tcalcuation of XV, X'DVR  : " << 1.* K.t_calK/CLOCKS_PER_SEC << endl;
+		  cout << "\tcalculateKernelMatrix(t) : " << 1.* t_KF/CLOCKS_PER_SEC << endl;
+		  cout << "\tcollecting Kernel        : " << 1.* t_add/CLOCKS_PER_SEC << endl;
+		  cout << "\ttotal time               : " << 1.* t_all/CLOCKS_PER_SEC << endl;
+		  cout << "\tconvolution              : " << 1.* t_conv/CLOCKS_PER_SEC << endl;
+		  cout << "\tall but conv             : " << 1.* (t_all-t_conv)/CLOCKS_PER_SEC << endl;
+		}
 
 	}
+	t += dtv;
 }
 //---------------------------------------------------------------------------//
 }

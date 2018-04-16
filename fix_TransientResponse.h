@@ -53,19 +53,17 @@ public:
 
 protected:
 	void recount_topology();
-	//int iarg;
 	double test;
 	double angle_constant, angle;
 	bool equi_initialized = false, zero_initialized = false;
 	int Vgroupbit;
 	double k_mass = 1.;
 	KernelMatrix K;
-	double t = 0, tc = 10;
+	double t = 0, ts = 0;
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	Eigen::MatrixXd pv_all;
 	std::vector<Eigen::MatrixXd> ur, ar;
-	//std::vector<Eigen::SparseMatrix<double>> KM;
 	std::vector<Eigen::MatrixXd> KM;
 	char mode;
 	clock_t t_all = 0, t_conv = 0, t_nve = 0, t_KF = 0, t_add = 0;

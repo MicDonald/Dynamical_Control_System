@@ -6,6 +6,7 @@
 # then package dir has its own customized Install.sh
 
 mode=$1
+compile=$2
 
 # enforce using portable C locale
 LC_ALL=C
@@ -19,7 +20,6 @@ action () {
   elif (! cmp -s $1 ../$1) then
     if (test -z "$2" || test -e ../$2) then
       cp $1 ..
-      cp Eigen -r ..
       if (test $mode = 2) then
         echo "  updating src/$1"
       fi
@@ -27,7 +27,6 @@ action () {
   elif (test -n "$2") then
     if (test ! -e ../$2) then
       rm -f ../$1
-      rm -f ../Eigen
     fi
   fi
 }
@@ -37,3 +36,14 @@ action () {
 for file in *.cpp *.h; do
   test -f ${file} && action $file
 done
+
+if (test "$compile" = 1) then
+  cd ..
+  make omp -j 8
+  make omp -j 8 mode=shlib
+  cd ~/lammps/lammps/python
+  python install.py
+  cd ~/work_space/USER-DCS
+fi
+
+

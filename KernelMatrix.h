@@ -33,7 +33,7 @@ public:
     Eigen::MatrixXd localKe(std::vector<double>, std::vector<double>);
     void calculateEigen();
     //Eigen::SparseMatrix<double> calculateKernelMatrix(double);
-    Eigen::MatrixXd calculateKernelMatrix(double);
+    Eigen::MatrixXd calculateKernelMatrix(double, bool);
     void setK_mass(double);
     void setAngle(double);
     double getK_mass();

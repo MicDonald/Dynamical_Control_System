@@ -6,7 +6,7 @@ using namespace std;
 namespace LAMMPS_NS {
 
 //       0        1          2                    3                   4             5         6          7             8
-//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tcutoff     mode        VgroupID
+//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tshift     mode        VgroupID
 //    9
 //  Nthreads
 
@@ -15,7 +15,7 @@ FixTransientResponse::FixTransientResponse (
   int narg,
   char **arg
 ) : FixNVE(lmp, narg, arg),
-  k_mass(atof(arg[3])), angle_constant(atof(arg[4])), angle(atof(arg[5])), tc(atof(arg[6])), mode(*arg[7])
+  k_mass(atof(arg[3])), angle_constant(atof(arg[4])), angle(atof(arg[5])), ts(atof(arg[6])), mode(*arg[7])
 {
   if (mode == 'u') cout << "Mode: Displacement" << endl;
   else cout << "Mode: Velocity" << endl;

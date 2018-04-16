@@ -207,21 +207,37 @@ void KernelMatrix::calculateEigen() {
     cout << "DV: " << vdof << "x" << DV.size() / vdof << endl;
     cout << "DVRreduced:" << vdof << "x" << r2vdof << endl;
   }
-  bool succ1 = loadMatrix("evalue", this->d, vdof);
-  bool succ2 = loadMatrix("evector", this->X, vdof);
-  if (!(succ1 && succ2)) {
+  if (vdof > 1000) {
+    bool succ1 = loadMatrix("evalue", d, vdof);
+    bool succ2 = loadMatrix("evector", X, vdof);
+    if (!(succ1 && succ2)) {
+      #pragma omp parallel
+      {
+        SelfAdjointEigenSolver<MatrixXd> solver(DV);
+        #pragma omp single
+        {
+          d = solver.eigenvalues().asDiagonal();
+          X = solver.eigenvectors();
+          saveMatrix("evalue", d, true);
+          saveMatrix("evector", X, true);
+          cout << "eigen calculation done" << endl;
+        }
+      }
+    }
+  }
+  else {
     #pragma omp parallel
     {
       SelfAdjointEigenSolver<MatrixXd> solver(DV);
       #pragma omp single
       {
+        cout << "Vdof is small. Ignore save & load." << endl;
         d = solver.eigenvalues().asDiagonal();
         X = solver.eigenvectors();
-        saveMatrix("evalue", d, true);
-        saveMatrix("evector", X, true);
         cout << "eigen calculation done" << endl;
       }
     }
+
   }
   right = X.transpose() * DVRreduced;
 }
@@ -229,12 +245,12 @@ void KernelMatrix::calculateEigen() {
 
 
 //SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){
-MatrixXd KernelMatrix::calculateKernelMatrix(double t) {
+MatrixXd KernelMatrix::calculateKernelMatrix(double t, bool deri = false) {
 //#pragma omp critical
 //{
-  SparseMatrix<double> sinHF;
+  SparseMatrix<double> sinHF; //, cosDHF;
   sinHF.resize(vdof, vdof);
-
+  // cosDHF.resize(vdof, vdof);
   //SparseMatrix<double> reducedKM;
   MatrixXd reducedKM;
   reducedKM.resize(v2rdof, r2vdof);
@@ -243,18 +259,21 @@ MatrixXd KernelMatrix::calculateKernelMatrix(double t) {
     if (d(i, i) == d(i, i) && abs(d(i, i)) > 1e-9) {
       complex<double> wi = sqrt( complex<double>(uv0(i, 0) * uv0(i, 0) / 4 - d(i, i) + vv0(i, 0)));
       complex<double> sinH = sinh(t * wi);
+      // complex<double> cosH = cosh(t * wi);
       sinHF.insert(i, i) = exp(uv0(i, 0) * t / 2) * real(sinH / wi);
-      //no uv0
-      // complex<double> wi = sqrt( complex<double>(- d(i,i) ));
-      // complex<double> sinH = sinh(t * wi);
-      // sinHF.insert(i,i)=real(sinH/wi);
+      // cosDHF.insert(i, i) = exp(uv0(i, 0) * t / 2) * uv0(i, 0) / 2 * real(sinH / wi) 
+      //                     + exp(uv0(i, 0) * t / 2) * real(cosH);
     }
   }
   t_w += clock() - Ttemp;
 
   Ttemp = clock();
-
-  MatrixXd left = -X * sinHF;
+  
+  MatrixXd left;
+  // if (!deri)
+  left = -X * sinHF;
+  // else
+    // left = -X * cosDHF;
 
   // Matrix tempKM=left*right;
   t_calK += clock() - Ttemp;
