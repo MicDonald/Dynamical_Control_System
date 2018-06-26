@@ -11,10 +11,8 @@ FixStyle(TransientResponse, FixTransientResponse)
 #include "fix_nve.h"
 #include "atom.h"
 #include "force.h"
-#include <vector>
 #include "KernelMatrix.h"
 #include "AtomInfo.h"
-#include <cstdlib>
 #include "lattice.h"
 #include "neighbor.h"
 #include "atom_vec.h"
@@ -28,6 +26,9 @@ FixStyle(TransientResponse, FixTransientResponse)
 #include "memory.h"
 #include "verlet.h"
 #include "group.h"
+#include <vector>
+#include <deque>
+#include <cstdlib>
 #include <unordered_map>
 #include <iterator>
 #include <algorithm>
@@ -36,7 +37,7 @@ FixStyle(TransientResponse, FixTransientResponse)
 #include <string>
 #include <memory>
 #include <ctime>
-
+#include <limits>
 
 namespace LAMMPS_NS {
 
@@ -59,14 +60,14 @@ protected:
 	int Vgroupbit;
 	double k_mass = 1.;
 	KernelMatrix K;
-	double t = 0, ts = 0;
+	double t = 0, tc = 0;
 	Eigen::MatrixXd pr;
 	Eigen::MatrixXd pv;
 	Eigen::MatrixXd pv_all;
-	std::vector<Eigen::MatrixXd> ur, ar;
+	std::deque<Eigen::MatrixXd> ur, ar;
 	std::vector<Eigen::MatrixXd> KM;
 	char mode;
-	clock_t t_all = 0, t_conv = 0, t_nve = 0, t_KF = 0, t_add = 0;
+	clock_t t_all = 0, t_conv = 0, t_nve = 0, t_KF = 0;
 };
 
 }
