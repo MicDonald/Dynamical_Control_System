@@ -39,8 +39,9 @@ done
 
 if (test "$compile" = 1) then
   cd ..
+  module load openmpi
+  module load gnu
   make omp -j 8
-  make omp -j 8 mode=shlib
   cd ~/lammps/lammps/python
   python install.py
   cd ~/work_space/USER-DCS

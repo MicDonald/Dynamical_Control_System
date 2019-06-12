@@ -113,6 +113,11 @@ void KernelMatrix::bondIdendifier() {
     cout << "[" << e << "]" << model.atomGID[e] << " ";
   }
   cout << endl;
+  gdof = model.atomGID.size() * 3;
+  vdof = model.atomVirtual.size() * 3;
+  rdof = model.atomReal.size() * 3;
+  v2rdof = model.atomV2r.size() * 3;
+  r2vdof = model.atomR2v.size() * 3;
 }
 
 void KernelMatrix::angleIdendifier() {
@@ -156,11 +161,11 @@ Eigen::MatrixXd KernelMatrix::localKe(vector<double> p1, vector<double> p2) {
 }
 
 void KernelMatrix::calculateEigen() {
-  gdof = model.atomGID.size() * 3;
-  vdof = model.atomVirtual.size() * 3;
-  rdof = model.atomReal.size() * 3;
-  v2rdof = model.atomV2r.size() * 3;
-  r2vdof = model.atomR2v.size() * 3;
+  // gdof = model.atomGID.size() * 3;
+  // vdof = model.atomVirtual.size() * 3;
+  // rdof = model.atomReal.size() * 3;
+  // v2rdof = model.atomV2r.size() * 3;
+  // r2vdof = model.atomR2v.size() * 3;
   SparseMatrix<double> D;
   d.resize(vdof, vdof);
   X.resize(vdof, vdof);
@@ -246,8 +251,8 @@ void KernelMatrix::calculateEigen() {
 
 //SparseMatrix<double> KernelMatrix::calculateKernelMatrix(double t){
 MatrixXd KernelMatrix::calculateKernelMatrix(double t, bool deri = false) {
-//#pragma omp critical
-//{
+// #pragma omp critical
+// {
   SparseMatrix<double> sinHF; //, cosDHF;
   sinHF.resize(vdof, vdof);
   // cosDHF.resize(vdof, vdof);

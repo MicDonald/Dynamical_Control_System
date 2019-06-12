@@ -5,9 +5,9 @@ using namespace Eigen;
 using namespace std;
 namespace LAMMPS_NS {
 
-//       0        1          2                    3                   4             5        6          7             8
-//fix fix_ID ALLgroup_id TransientResponse  spring_const/mass    angle_constant   angle     tc     mode        VgroupID
-//    9
+//       0        1          2                    3                   4                 5             6        7      8     9
+//fix fix_ID ALLgroup_id TransientResponse     VgroupID       spring_const/mass    angle_constant   angle     tc    dtau   mode
+//    10
 //  Nthreads
 
 FixTransientResponse::FixTransientResponse (
@@ -15,7 +15,7 @@ FixTransientResponse::FixTransientResponse (
   int narg,
   char **arg
 ) : FixNVE(lmp, narg, arg),
-  k_mass(atof(arg[3])), angle_constant(atof(arg[4])), angle(atof(arg[5])), tc(atof(arg[6])), mode(*arg[7])
+  k_mass(atof(arg[4])), angle_constant(atof(arg[5])), angle(atof(arg[6])), tc(atof(arg[7])), dtau(atof(arg[8])), mode(*arg[9])
 {
   if (mode == 'u') cout << "Mode: Displacement" << endl;
   else cout << "Mode: Velocity" << endl;
@@ -25,9 +25,9 @@ FixTransientResponse::FixTransientResponse (
   K.setK_mass(k_mass);
   std::cout << "k/m = " << K.getK_mass() << std::endl;
   
-  int Vgroup = group->find(arg[8]);
+  int Vgroup = group->find(arg[3]);
   std::cout << "dt = " << update->dt << std::endl;
-  if (Vgroup == -1) error->all(FLERR, "Could not find Virtual group ID");
+  if (Vgroup == -1) error->all(FLERR, "Could not find Virtual group ID.");
   Vgroupbit = group->bitmask[Vgroup];
   std::cout << "tc = " << tc << std::endl;
 }

@@ -9,25 +9,18 @@ FixTransientResponseOMP::FixTransientResponseOMP (
   class LAMMPS *lmp,
   int narg,
   char **arg
-) : FixTransientResponse(lmp, narg, arg),
-	Nthreads(atof(arg[9]))
+) : FixTransientResponse(lmp, narg, arg)
 {
 	if (narg != 9 && narg != 10) error -> all(FLERR, "Illegal fix TransientResponseOMP command");
 	if (arg[9])
-	{
-		cout << "using " << Nthreads << " threads" << endl;
 		Nthreads=atof(arg[9]);
-	}
 	else
-	{
 		Nthreads = 8;
-		cout << "using default 8" << Nthreads << " threads" << endl;
-	}
 	omp_set_dynamic(0);     // Explicitly disable dynamic teams
 	omp_set_num_threads(Nthreads);
 	Eigen::initParallel();
 	Eigen::setNbThreads(Nthreads);
-
+	
 	if (!equi_initialized) {
 		dtv = update->dt;
 		dtf = 0.5 * update->dt * force->ftm2v;
@@ -53,9 +46,9 @@ FixTransientResponseOMP::FixTransientResponseOMP (
 		K.angleIdendifier();
 
 		K.printAngles();
-		pr.setZero(K.model.atomR2v.size() * 3, 1);
-		pv.setZero(K.model.atomV2r.size() * 3, 1);
-		pv_all.setZero(K.model.atomVirtual.size() * 3, 1);
+		pr.setZero(K.getr2vDof(), 1);
+		pv.setZero(K.getv2rDof(), 1);
+		pv_all.setZero(K.getvDof(), 1);
 
 		cout << "Atoms Global ID in the group: " << K.model.atomGID.size() << endl;
 		for (auto &e : K.model.atomGID) cout << e << " ";
@@ -123,8 +116,8 @@ FixTransientResponseOMP::init ()
 		int nlocal = atom->nlocal;
 
 		MatrixXd tempPv, tempVv;
-		tempPv.setZero(K.model.atomVirtual.size() * 3, 1);
-		tempVv.setZero(K.model.atomVirtual.size() * 3, 1);
+		tempPv.setZero(K.getvDof(), 1);
+		tempVv.setZero(K.getvDof(), 1);
 		for (const auto& e : K.model.atomVirtual) {
 			int gid = K.model.atomGID[e];
 			int i = atom->map(gid);
@@ -176,7 +169,6 @@ FixTransientResponseOMP::init ()
 		//delete avec;
 		cout << "delete " << n << " atoms" << endl;
 		zero_initialized = true;
-		KM.reserve(20000);
 	}
 }
 
@@ -308,8 +300,8 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 
 	if (mode == 'u'|| mode == 'x') {
 		MatrixXd uv, tempPr;
-		tempPr.setZero(K.model.atomR2v.size() * 3, 1);
-		uv.setZero(K.model.atomV2r.size() * 3, 1);
+		tempPr.setZero(K.getr2vDof(), 1);
+		uv.setZero(K.getv2rDof(), 1);
 		#pragma omp single
 		{
 			for (const auto& e : K.model.atomR2v) {
@@ -329,23 +321,26 @@ FixTransientResponseOMP::initial_integrate (int vflag)
 
 		clock_t t_conv_temp = clock();
 
+		// #pragma omp parallel
+		// {
+		// 	#pragma omp for
+		// 	for (int vi = 0; vi < K.getv2rDof(); ++vi)
+		// 		for (int i = 0; i < KM.size(); ++i)
+		// 			uv.row(vi) += dtv * KM[i].row(vi) * ur[i].col(0);
+		// }
 		#pragma omp parallel
 		{
 			#pragma omp for
-			for (int i = 0; i < KM.size(); ++i) {	
-				MatrixXd tempUv = dtv * KM[i] * ur[i];
-				#pragma omp critical
-				{
-					uv += tempUv;
-				}
-			}
+			for (int vi = 0; vi < K.getv2rDof(); ++vi)
+				for (int i = 0; i < KM.size(); ++i)
+					if (abs(i - int(KM.size()))%dtau == 0)
+						uv.row(vi) += dtau * dtv * KM[i].row(vi) * ur[i].col(0);
 		}
 		t_conv += clock() - t_conv_temp;
 
-
 		#pragma omp single
 		{
-			//update uv
+			// update uv
 			for (const auto& e : K.model.atomV2r) {
 				int gid = K.model.atomGID[e];
 				int i = atom->map(gid);
@@ -400,11 +395,11 @@ FixTransientResponseOMP::final_integrate()
 			}
 		}
 	}
-
+// 
 	if (mode == 'a'|| mode == 'x') {
 		MatrixXd av, tempAr;
-		av.setZero(K.model.atomV2r.size() * 3, 1);
-		tempAr.setZero(K.model.atomR2v.size() * 3, 1);
+		av.setZero(K.getv2rDof(), 1);
+		tempAr.setZero(K.getr2vDof(), 1);
 		#pragma omp single
 		{
 			for (const auto& e : K.model.atomR2v) {
@@ -422,18 +417,12 @@ FixTransientResponseOMP::final_integrate()
 
 		}
 		clock_t t_conv_temp = clock();
-
-		//cout << min(t, tc) <<": " << ar.size() << " " << KM.size() << endl;
 		#pragma omp parallel
 		{
 			#pragma omp for
-			for (int i = 0; i < KM.size(); ++i) {	
-				MatrixXd tempAv = dtv * KM[i] * ar[i];
-				#pragma omp critical
-				{
-					av += tempAv;
-				}
-			}
+			for (int vi = 0; vi < K.getv2rDof(); ++vi)
+				for (int i = 0; i < KM.size(); ++i)
+					av.row(vi) += dtv * KM[i].row(vi) * ar[i].col(0);
 		}
 		t_conv += clock() - t_conv_temp;
 
@@ -481,7 +470,7 @@ FixTransientResponseOMP::final_integrate()
 	}
 
 
-	if(t==0){
+	if(t == 0 || t/dtv == 100){
 		cout << "\tNVE for real atom        : " << 1.* t_nve/CLOCKS_PER_SEC << endl;
 		cout << "\tcalcuation of w          : " << 1.* K.t_w/CLOCKS_PER_SEC << endl;
 		cout << "\tcalcuation of XV, X'DVR  : " << 1.* K.t_calK/CLOCKS_PER_SEC << endl;
@@ -496,4 +485,3 @@ FixTransientResponseOMP::final_integrate()
 }
 //---------------------------------------------------------------------------//
 }
-
