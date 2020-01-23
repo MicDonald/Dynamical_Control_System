@@ -1,6 +1,4 @@
-# Dynamical_Control_System
-
-Citation
+# Citation
 
 If you find this code useful please cite us in your work:
 
